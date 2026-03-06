@@ -1,0 +1,18 @@
+# Python / Django
+__pycache__/
+*.pyc
+env/
+venv/
+*.sqlite3
+
+# Environment / secrets
+.env
+
+# Node / React Native
+mobile/node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,55 @@
+{
+  "expo": {
+    "name": "CivicView",
+    "slug": "civicview-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#667eea"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.civicview.mobile",
+      "infoPlist": {
+        "NSCameraUsageDescription": "CivicView needs camera access to attach photos to your report.",
+        "NSPhotoLibraryUsageDescription": "CivicView needs photo library access to attach photos to your report.",
+        "NSLocationWhenInUseUsageDescription": "CivicView uses your location to pin the report on the map."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#667eea"
+      },
+      "package": "com.civicview.mobile",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Allow CivicView to use your camera to take photos of issues.",
+          "photosPermission": "Allow CivicView to access your photos to attach to reports."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "CivicView uses your location to pin the report on the map."
+        }
+      ],
+      "expo-asset"
+    ]
+  }
+}

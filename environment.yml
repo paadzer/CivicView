@@ -1,0 +1,28 @@
+name: civicview
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - django
+  - djangorestframework
+  - psycopg2
+  - gdal
+  - libgdal
+  - geos
+  - proj
+  - postgresql
+  - numpy
+  - scikit-learn
+  - shapely
+  - celery
+  - redis-py
+  - scipy
+  - pip
+  - pip:
+      - django-environ
+      - django-cors-headers
+      - django-filter
+      - Pillow
+      - gunicorn
+
