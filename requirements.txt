@@ -1,0 +1,50 @@
+amqp @ file:///home/conda/feedstock_root/build_artifacts/amqp_1733906301603/work
+asgiref @ file:///home/conda/feedstock_root/build_artifacts/asgiref_1763585112330/work
+async-timeout @ file:///home/conda/feedstock_root/build_artifacts/async-timeout_1733235340728/work
+billiard @ file:///D:/bld/billiard_1763322198390/work
+boto3 @ file:///home/conda/feedstock_root/build_artifacts/boto3_1764110580742/work
+botocore @ file:///home/conda/feedstock_root/build_artifacts/botocore_1764107639131/work
+Brotli @ file:///D:/bld/brotli-split_1764017006836/work
+celery @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_celery_1749017601/work
+cffi @ file:///D:/bld/cffi_1761202893018/work
+click @ file:///D:/bld/click_1763248552209/work
+click-didyoumean @ file:///home/conda/feedstock_root/build_artifacts/click-didyoumean_1734293070305/work
+click-plugins @ file:///home/conda/feedstock_root/build_artifacts/click-plugins_1750848229740/work
+click-repl @ file:///home/conda/feedstock_root/build_artifacts/click-repl_1694959444233/work
+colorama @ file:///home/conda/feedstock_root/build_artifacts/colorama_1733218098505/work
+Django @ file:///home/conda/feedstock_root/build_artifacts/django_1762777100038/work
+django-cors-headers==4.9.0
+django-environ==0.12.0
+django-filter==25.2
+djangorestframework @ file:///home/conda/feedstock_root/build_artifacts/djangorestframework_1754514405054/work
+GDAL==3.12.0
+gunicorn==23.0.0
+h2 @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_h2_1756364871/work
+hpack @ file:///home/conda/feedstock_root/build_artifacts/hpack_1737618293087/work
+hyperframe @ file:///home/conda/feedstock_root/build_artifacts/hyperframe_1737618333194/work
+jmespath @ file:///home/conda/feedstock_root/build_artifacts/jmespath_1733229141657/work
+joblib @ file:///home/conda/feedstock_root/build_artifacts/joblib_1756321760188/work
+kombu @ file:///home/conda/feedstock_root/build_artifacts/kombu_1748865226042/work
+numpy @ file:///D:/bld/bld/rattler-build_numpy_1763350917/work/dist/numpy-2.3.5-cp311-cp311-win_amd64.whl#sha256=07ce9d4d8f7eb5ba6c8ad6a3ab8c69f461a9e155b76a2007013d881cce0407dd
+packaging @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_packaging_1745345660/work
+pillow==12.1.1
+prompt_toolkit @ file:///home/conda/feedstock_root/build_artifacts/prompt-toolkit_1756321756983/work
+psycopg2 @ file:///D:/bld/psycopg2-split_1763595846341/work
+pycparser @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_pycparser_1733195786/work
+PySocks @ file:///D:/bld/pysocks_1733217287171/work
+python-dateutil @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_python-dateutil_1751104122/work
+redis @ file:///home/conda/feedstock_root/build_artifacts/redis-py_1763574998339/work
+s3transfer @ file:///home/conda/feedstock_root/build_artifacts/s3transfer_1763682542603/work
+scikit-learn @ file:///D:/bld/scikit-learn_1757432804930/work/dist/scikit_learn-1.7.2-cp311-cp311-win_amd64.whl#sha256=933d5b09ab3bb0ad974b8d4f76aa32096213702421cb325514d3c4a7fee3d01e
+scipy @ file:///C:/bld/scipy-split_1763219312406/work/dist/scipy-1.16.3-cp311-cp311-win_amd64.whl#sha256=32ef1aa718e65de14b6b9fe94b2724affaaad7dfc2002b43b37a2f347293c673
+shapely @ file:///D:/bld/shapely_1762523485568/work
+six @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_six_1753199211/work
+sqlparse @ file:///home/conda/feedstock_root/build_artifacts/sqlparse_1734007102193/work
+threadpoolctl @ file:///home/conda/feedstock_root/build_artifacts/threadpoolctl_1741878222898/work
+typing_extensions @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_typing_extensions_1756220668/work
+tzdata @ file:///home/conda/feedstock_root/build_artifacts/python-tzdata_1742745135198/work
+urllib3 @ file:///home/conda/feedstock_root/build_artifacts/urllib3_1750271362675/work
+vine @ file:///home/conda/feedstock_root/build_artifacts/vine_1733906372582/work
+wcwidth @ file:///home/conda/feedstock_root/build_artifacts/wcwidth_1758622279606/work
+win_inet_pton @ file:///D:/bld/win_inet_pton_1733130564612/work
+zstandard==0.25.0
