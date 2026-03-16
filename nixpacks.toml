@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["gdal", "geos", "proj"]
+nixPkgs = ["python3", "gdal", "geos", "proj"]
 
 [start]
 cmd = "gunicorn civicview_project.wsgi --bind 0.0.0.0:$PORT"
