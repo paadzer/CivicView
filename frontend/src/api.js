@@ -2,8 +2,12 @@
 import axios from "axios";
 
 // Create Axios instance with base URL for all API requests
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "https://civicview-production.up.railway.app";
+
 const api = axios.create({
-  baseURL: "http://127.0.0.1:8000/api/",
+  // Ensure exactly one trailing slash before "api/"
+  baseURL: `${API_BASE_URL.replace(/\/+$/, "")}/api/`,
 });
 
 // Auth token: add to requests when present (for create report, etc.)
