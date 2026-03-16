@@ -30,6 +30,7 @@ packaging @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_
 pillow==12.1.1
 prompt_toolkit @ file:///home/conda/feedstock_root/build_artifacts/prompt-toolkit_1756321756983/work
 psycopg2 @ file:///D:/bld/psycopg2-split_1763595846341/work
+psycopg2-binary==2.9.11
 pycparser @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_pycparser_1733195786/work
 PySocks @ file:///D:/bld/pysocks_1733217287171/work
 python-dateutil @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_python-dateutil_1751104122/work
