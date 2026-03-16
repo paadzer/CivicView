@@ -212,17 +212,14 @@ CELERY_RESULT_BACKEND = env(
 )
 
 # ------------------------------------------------------------
-# GeoDjango: GDAL + GEOS (Windows + Conda)
+# GeoDjango: GDAL + GEOS (Windows-only configuration)
 # ------------------------------------------------------------
 
-# IMPORTANT — these paths must point exactly to your Conda environment
-# GeoDjango requires GDAL and GEOS libraries for spatial operations
-# On Windows, these paths must be explicitly set (Linux/macOS usually auto-detect)
-
-# GDAL (Geospatial Data Abstraction Library): Handles raster/vector data formats
-GDAL_LIBRARY_PATH = r"C:\Users\patri\miniconda3\envs\civicview\Library\bin\gdal.dll"
-# GEOS (Geometry Engine Open Source): Handles geometric operations (buffers, intersections, etc.)
-GEOS_LIBRARY_PATH = r"C:\Users\patri\miniconda3\envs\civicview\Library\bin\geos_c.dll"
+# On Windows development, these paths point to the Conda environment DLLs.
+# On Linux (e.g. Railway), Django will rely on system libraries instead.
+if os.name == "nt":
+    GDAL_LIBRARY_PATH = r"C:\Users\patri\miniconda3\envs\civicview\Library\bin\gdal.dll"
+    GEOS_LIBRARY_PATH = r"C:\Users\patri\miniconda3\envs\civicview\Library\bin\geos_c.dll"
 
 # ------------------------------------------------------------
 # Default primary key
