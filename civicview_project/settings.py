@@ -184,21 +184,17 @@ REST_FRAMEWORK = {
 
 # CORS configuration: Allows React frontend to make API requests
 # Without this, browsers block cross-origin requests from React (port 3000) to Django (port 8000)
-#CORS_ALLOWED_ORIGINS = env.list(
-#    "CORS_ALLOWED_ORIGINS",
-#    default=[
-#        "http://127.0.0.1:3000",  # React dev server (localhost)
-#        "http://localhost:3000",  # React dev server (alternative)
-#    ],
-#)
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "https://civic-view.vercel.app",
+]
 
 # Trusted origins for CSRF-protected requests (e.g. admin login in production)
-CSRF_TRUSTED_ORIGINS = env.list(
-    "CSRF_TRUSTED_ORIGINS",
-    default=[
-        "https://civicview-production.up.railway.app",
-    ],
-)
+CSRF_TRUSTED_ORIGINS = [
+    "https://civicview-production.up.railway.app",
+    "https://civic-view.vercel.app",
+]
 
 # ------------------------------------------------------------
 # Celery / Redis
