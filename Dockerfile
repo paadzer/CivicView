@@ -1,0 +1,45 @@
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gdal-bin \
+    libgdal-dev \
+    libgeos-dev \
+    libproj-dev \
+    proj-bin \
+    proj-data \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+ENV GDAL_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libgdal.so \
+    GEOS_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libgeos_c.so
+
+CMD sh -c "python manage.py migrate && gunicorn civicview_project.wsgi:application --bind 0.0.0.0:$PORT"
+FROM mambaorg/micromamba:1.5.8
+
+WORKDIR /app
+
+COPY environment.yml /tmp/environment.yml
+RUN micromamba env create -f /tmp/environment.yml && micromamba clean --all --yes
+
+SHELL ["micromamba", "run", "-n", "civicview", "/bin/bash", "-c"]
+
+COPY . /app
+
+ENV DJANGO_SETTINGS_MODULE=civicview_project.settings \
+    PYTHONUNBUFFERED=1
+
+EXPOSE 8000
+
+CMD ["micromamba", "run", "-n", "civicview", "gunicorn", "civicview_project.wsgi:application", "--bind", "0.0.0.0:8000"]
+
+
