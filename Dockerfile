@@ -23,4 +23,4 @@ COPY . .
 ENV GDAL_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libgdal.so \
     GEOS_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libgeos_c.so
 
-CMD sh -c "python manage.py migrate && gunicorn civicview_project.wsgi:application --bind 0.0.0.0:$PORT"
+CMD sh -c "python manage.py migrate && gunicorn civicview_project.wsgi:application --bind 0.0.0.0:8000"
