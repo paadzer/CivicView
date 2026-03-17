@@ -55,11 +55,13 @@ export default function Dashboard({ role, userId, onHotspotsRegenerated }) {
   const [labLoading, setLabLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState("overview"); // "overview" | "management" | "geographic" | "lab"
+  const [activeTab, setActiveTab] = useState("overview"); // "overview" | "management" | "geographic" | "lab" | "export"
   const [myAreaType, setMyAreaType] = useState(""); // "" | "county" | "constituency"
   const [myAreaId, setMyAreaId] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [exportCategory, setExportCategory] = useState("");
+  const [exportPeriod, setExportPeriod] = useState("");
   
   // Geographic analysis state
   const [counties, setCounties] = useState([]);
@@ -200,6 +202,10 @@ export default function Dashboard({ role, userId, onHotspotsRegenerated }) {
       </div>
     );
   }
+
+  const allCategories = Array.from(
+    new Set((dashboard?.top_categories ?? []).map((c) => c.category))
+  ).sort();
 
   return (
     <div style={{ 
@@ -364,6 +370,23 @@ export default function Dashboard({ role, userId, onHotspotsRegenerated }) {
           }}
         >
           Geographic Analysis
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("export")}
+          style={{
+            padding: "0.5rem 1.25rem",
+            borderRadius: 999,
+            border: "2px solid " + (activeTab === "export" ? "#667eea" : "#e5e7eb"),
+            background: activeTab === "export" ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" : "#ffffff",
+            color: activeTab === "export" ? "#ffffff" : "#475569",
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: "pointer",
+            transition: "all 0.2s",
+          }}
+        >
+          Export CSV
         </button>
       </div>
 
@@ -1400,6 +1423,147 @@ export default function Dashboard({ role, userId, onHotspotsRegenerated }) {
                     </div>
                   </div>
                 )}
+          </div>
+        </>
+      )}
+
+      {activeTab === "export" && (
+        <>
+          <div style={{ marginBottom: "2rem" }}>
+            <h2 style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: "0.75rem", color: "#0f172a" }}>
+              Export reports to CSV
+            </h2>
+            <p style={{ fontSize: "0.9rem", color: "#475569", marginBottom: "1rem", lineHeight: "1.5" }}>
+              Choose optional filters and then download a CSV of reports directly from the backend.
+            </p>
+
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "1rem",
+                alignItems: "flex-end",
+                background: "#f8fafc",
+                borderRadius: "10px",
+                border: "1px solid #e2e8f0",
+                padding: "1rem 1.25rem",
+                marginBottom: "1.5rem",
+              }}
+            >
+              {/* Category filter */}
+              <label
+                style={{
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: "#334155",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.4rem",
+                  minWidth: 200,
+                }}
+              >
+                Category
+                <select
+                  value={exportCategory}
+                  onChange={(e) => setExportCategory(e.target.value)}
+                  style={{
+                    padding: "0.5rem 0.75rem",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "6px",
+                    fontSize: "0.875rem",
+                    background: "white",
+                    color: "#0f172a",
+                  }}
+                >
+                  <option value="">All categories</option>
+                  {allCategories.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {/* Period filter */}
+              <label
+                style={{
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: "#334155",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.4rem",
+                  minWidth: 200,
+                }}
+              >
+                Time period
+                <select
+                  value={exportPeriod}
+                  onChange={(e) => setExportPeriod(e.target.value)}
+                  style={{
+                    padding: "0.5rem 0.75rem",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "6px",
+                    fontSize: "0.875rem",
+                    background: "white",
+                    color: "#0f172a",
+                  }}
+                >
+                  <option value="">All time</option>
+                  <option value="last_hour">Last hour</option>
+                  <option value="last_24h">Last 24 hours</option>
+                  <option value="yesterday">Yesterday</option>
+                  <option value="last_7_days">Last 7 days</option>
+                  <option value="last_30_days">Last 30 days</option>
+                </select>
+              </label>
+
+              {/* Download button */}
+              <div style={{ marginLeft: "auto" }}>
+                {(() => {
+                  const params = [];
+                  if (exportCategory) params.push(`category=${encodeURIComponent(exportCategory)}`);
+                  if (exportPeriod) params.push(`period=${exportPeriod}`);
+                  const query = params.length ? `?${params.join("&")}` : "";
+                  const href = `https://civicview-production.up.railway.app/api/reports/export/${query}`;
+                  return (
+                    <a
+                      href={href}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "0.6rem 1.4rem",
+                        borderRadius: "999px",
+                        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                        color: "white",
+                        fontSize: 14,
+                        fontWeight: 600,
+                        textDecoration: "none",
+                        boxShadow: "0 4px 15px rgba(102, 126, 234, 0.45)",
+                      }}
+                    >
+                      Download CSV
+                    </a>
+                  );
+                })()}
+              </div>
+            </div>
+
+            <p style={{ fontSize: "0.8rem", color: "#64748b" }}>
+              The CSV is generated by the backend at{" "}
+              <code
+                style={{
+                  background: "#f1f5f9",
+                  padding: "0.2rem 0.4rem",
+                  borderRadius: "4px",
+                  fontFamily: "monospace",
+                }}
+              >
+                /api/reports/export/
+              </code>{" "}
+              and uses the same filters as the main reports API (category and period).
+            </p>
           </div>
         </>
       )}
