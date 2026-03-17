@@ -36,6 +36,9 @@ class ReportSerializer(serializers.ModelSerializer):
     priority_score = serializers.SerializerMethodField(read_only=True)
     # Image URLs for report photos (from mobile or web)
     images = serializers.SerializerMethodField(read_only=True)
+    # Simple engagement metrics
+    like_count = serializers.SerializerMethodField(read_only=True)
+    liked_by_me = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Report
@@ -58,6 +61,8 @@ class ReportSerializer(serializers.ModelSerializer):
             "status_display",
             "priority_score",
             "images",
+            "like_count",
+            "liked_by_me",
         ]
         # These fields are auto-generated or set server-side
         read_only_fields = [
@@ -70,6 +75,8 @@ class ReportSerializer(serializers.ModelSerializer):
             "assigned_to_username",
             "priority_score",
             "images",
+            "like_count",
+            "liked_by_me",
         ]
 
     def validate(self, data):
@@ -246,6 +253,17 @@ class ReportSerializer(serializers.ModelSerializer):
         if not request:
             return [img.image.url for img in obj.images.all() if img.image]
         return [request.build_absolute_uri(img.image.url) for img in obj.images.all() if img.image]
+
+    def get_like_count(self, obj):
+        # Number of users who support/like this report
+        return obj.supporters.count()
+
+    def get_liked_by_me(self, obj):
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if not user or not user.is_authenticated:
+            return False
+        return obj.supporters.filter(id=user.id).exists()
 
 
 # HotspotSerializer: Converts Hotspot model instances to/from JSON for API

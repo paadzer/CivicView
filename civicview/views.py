@@ -1,11 +1,12 @@
 # Import Django REST Framework viewsets for API endpoints
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import status, viewsets
+from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
-
+from django.http import HttpResponse
+import csv
 from .filters import ReportFilter
 from .models import County, DailConstituency, Hotspot, Report, ReportImage
 from .permissions import IsCouncilOrAdmin, ReportPermission
@@ -41,6 +42,56 @@ class ReportViewSet(viewsets.ModelViewSet):
         categories = Report.objects.values_list("category", flat=True).distinct().order_by("category")
         return Response(list(categories))
 
+    @action(detail=False, methods=["get"], permission_classes=[permissions.IsAuthenticated])
+    def export(self, request):
+        """
+        Export reports to CSV.
+
+        Respects existing filters (?category=..., ?period=..., etc.).
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = 'attachment; filename="reports.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow(
+            [
+                "id",
+                "title",
+                "description",
+                "category",
+                "status",
+                "is_valid",
+                "created_at",
+                "resolved_at",
+                "latitude",
+                "longitude",
+                "like_count",
+            ]
+        )
+
+        for report in queryset.iterator():
+            lat = report.geom.y if report.geom else ""
+            lon = report.geom.x if report.geom else ""
+            writer.writerow(
+                [
+                    report.id,
+                    report.title,
+                    report.description,
+                    report.category,
+                    report.status,
+                    report.is_valid,
+                    report.created_at.isoformat() if report.created_at else "",
+                    report.resolved_at.isoformat() if report.resolved_at else "",
+                    lat,
+                    lon,
+                    report.supporters.count(),
+                ]
+            )
+
+        return response
+
     @action(detail=True, methods=["post"], parser_classes=[MultiPartParser, FormParser])
     def images(self, request, pk=None):
         """Upload one or more images for a report. POST /api/reports/{id}/images/ with multipart: image or images[]."""
@@ -60,6 +111,21 @@ class ReportViewSet(viewsets.ModelViewSet):
             if url:
                 created.append(url)
         return Response({"uploaded": len(created), "images": created}, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated])
+    def like(self, request, pk=None):
+        """
+        Mark the current authenticated user as supporting/liking this report.
+        POST /api/reports/{id}/like/
+        """
+        report = self.get_object()
+        report.supporters.add(request.user)
+        return Response(
+            {
+                "like_count": report.supporters.count(),
+                "liked_by_me": True,
+            }
+        )
 
 
 # HotspotViewSet: Provides read-only access to hotspot clusters

@@ -60,6 +60,12 @@ class Report(models.Model):
     resolved_at = models.DateTimeField(null=True, blank=True)
     # Flag to indicate whether this report is considered valid (used for quality control)
     is_valid = models.BooleanField(default=True, db_index=True)
+    # Users who have "liked" or support this report
+    supporters = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name="supported_reports",
+        blank=True,
+    )
 
     class Meta:
         # Database indexes for faster queries on created_at, status, assignee, and validity

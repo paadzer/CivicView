@@ -1,15 +1,15 @@
 /**
  * CivicView mobile API client.
- * Set API_BASE_URL in app config or default to local machine (Expo Go / device on same network).
+ * Defaults to the production API on Railway.
+ * You can override by setting global.__API_BASE_URL__ in development.
  */
 
 const getBaseUrl = () => {
   if (typeof global !== "undefined" && global.__API_BASE_URL__) {
     return global.__API_BASE_URL__.replace(/\/$/, "");
   }
-  // When running on a physical device, 127.0.0.1 points to the phone itself.
-  // Use the laptop's LAN IP so the device can reach the Django API.
-  return "http://192.168.0.11:8000/api";
+  // Default: production backend
+  return "https://civicview-production.up.railway.app/api";
 };
 
 const baseURL = getBaseUrl();

@@ -21,7 +21,8 @@ const initialState = {
 //   - loading: Boolean indicating if form submission is in progress
 //   - selectedLocation: Object with lat/lng from map click (or null)
 //   - onLocationChange: Callback to clear selected location
-function ReportForm({ onSubmit, loading, selectedLocation, onLocationChange }) {
+//   - categories: Optional array of category names for dropdown
+function ReportForm({ onSubmit, loading, selectedLocation, onLocationChange, categories = [] }) {
   const [values, setValues] = useState(initialState);
   const [locationError, setLocationError] = useState(null);
 
@@ -105,12 +106,19 @@ function ReportForm({ onSubmit, loading, selectedLocation, onLocationChange }) {
       </label>
       <label>
         Category
-        <input
+        <select
           name="category"
           value={values.category}
           onChange={handleChange}
           required
-        />
+        >
+          <option value="">Select a category</option>
+          {(categories.length ? categories : ["Other"]).map((cat) => (
+            <option key={cat} value={cat}>
+              {cat}
+            </option>
+          ))}
+        </select>
       </label>
       <label>
         Latitude

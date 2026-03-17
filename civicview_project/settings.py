@@ -176,6 +176,16 @@ REST_FRAMEWORK = {
     "DEFAULT_FILTER_BACKENDS": [
         "django_filters.rest_framework.DjangoFilterBackend",
     ],
+    # Basic throttling to prevent spamming report submissions and other writes
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.UserRateThrottle",
+        "rest_framework.throttling.AnonRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        # Adjust as needed; this caps how many requests a user/IP can make
+        "user": "20/minute",
+        "anon": "5/minute",
+    },
 }
 
 # ------------------------------------------------------------

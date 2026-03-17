@@ -9,7 +9,7 @@ import {
   View,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { fetchReports } from "../api";
+import { fetchReports, api } from "../api";
 
 export default function HomeScreen({ user, onLogout, onReportIssue }) {
   const [reports, setReports] = useState([]);
@@ -78,6 +78,27 @@ export default function HomeScreen({ user, onLogout, onReportIssue }) {
               {item.images && item.images.length > 0 && (
                 <Text style={styles.cardPhotos}>📷 {item.images.length} photo(s)</Text>
               )}
+              <Pressable
+                style={styles.likeButton}
+                onPress={async () => {
+                  try {
+                    const res = await api.post(`reports/${item.id}/like/`, {});
+                    setReports((prev) =>
+                      prev.map((r) =>
+                        r.id === item.id
+                          ? { ...r, like_count: res.like_count, liked_by_me: true }
+                          : r
+                      )
+                    );
+                  } catch (e) {
+                    // ignore like errors on mobile UI
+                  }
+                }}
+              >
+                <Text style={styles.likeText}>
+                  {item.liked_by_me ? "👍 Liked" : "👍 Like"} ({item.like_count || 0})
+                </Text>
+              </Pressable>
             </View>
           )}
         />
@@ -136,4 +157,13 @@ const styles = StyleSheet.create({
   cardCategory: { fontSize: 12, color: "#667eea", marginTop: 4 },
   cardDesc: { fontSize: 14, color: "#475569", marginTop: 6 },
   cardPhotos: { fontSize: 12, color: "#64748b", marginTop: 6 },
+  likeButton: {
+    marginTop: 8,
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: "#e0e7ff",
+  },
+  likeText: { fontSize: 12, color: "#3730a3", fontWeight: "500" },
 });

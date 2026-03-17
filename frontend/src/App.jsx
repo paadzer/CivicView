@@ -361,6 +361,7 @@ function App() {
             loading={loading}
             selectedLocation={selectedLocation}
             onLocationChange={setSelectedLocation}
+            categories={categories}
           />
         ) : (
           <div style={{ 
