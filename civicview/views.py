@@ -5,6 +5,7 @@ from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
+import logging
 from django.http import HttpResponse
 import csv
 from .filters import ReportFilter
@@ -32,9 +33,19 @@ class ReportViewSet(viewsets.ModelViewSet):
     ordering = ["-created_at"]
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
-        # Auto-refresh: trigger hotspot regeneration after new report (runs async via Celery)
-        generate_hotspots.delay()
+        instance = serializer.save(created_by=self.request.user)
+        # Auto-refresh: trigger hotspot regeneration after new report.
+        # Prefer async via Celery, but fall back to synchronous execution if Redis/Celery is unavailable.
+        logger = logging.getLogger(__name__)
+        try:
+            generate_hotspots.delay()
+        except Exception as exc:
+            logger.warning("Celery/Redis unavailable, running generate_hotspots synchronously: %s", exc)
+            try:
+                generate_hotspots()
+            except Exception as inner_exc:
+                logger.error("generate_hotspots failed; continuing without hotspot update: %s", inner_exc)
+        return instance
 
     @action(detail=False, methods=["get"])
     def categories(self, request):
