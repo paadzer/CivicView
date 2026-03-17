@@ -11,6 +11,7 @@ import { setApiToken } from "./api";
 import LoginScreen from "./screens/LoginScreen";
 import HomeScreen from "./screens/HomeScreen";
 import ReportScreen from "./screens/ReportScreen";
+import MapScreen from "./screens/MapScreen";
 
 export default function App() {
   const [screen, setScreen] = useState("loading");
@@ -91,11 +92,21 @@ export default function App() {
     );
   }
 
+  if (screen === "map") {
+    return (
+      <MapScreen
+        user={user}
+        onBack={() => setScreen("home")}
+      />
+    );
+  }
+
   return (
     <HomeScreen
       user={user}
       onLogout={logout}
       onReportIssue={() => setScreen("report")}
+      onOpenMap={() => setScreen("map")}
     />
   );
 }

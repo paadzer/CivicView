@@ -30,7 +30,8 @@ class ReportSerializer(serializers.ModelSerializer):
     geom = serializers.SerializerMethodField(read_only=True)
     # Readable status label (e.g. "In progress") alongside internal status value
     status_display = serializers.CharField(source="get_status_display", read_only=True)
-    # Read-only username of the assignee for convenience in the frontend
+    # Read-only username of the reporter and assignee for convenience in the frontend
+    created_by_username = serializers.SerializerMethodField(read_only=True)
     assigned_to_username = serializers.SerializerMethodField(read_only=True)
     # Computed priority score combining recency, category severity, status, and hotspot membership
     priority_score = serializers.SerializerMethodField(read_only=True)
@@ -53,6 +54,7 @@ class ReportSerializer(serializers.ModelSerializer):
             "longitude",
             "geom",
             "created_by",
+            "created_by_username",
             "assigned_to",
             "assigned_to_username",
             "target_resolution_date",
@@ -69,6 +71,7 @@ class ReportSerializer(serializers.ModelSerializer):
             "id",
             "geom",
             "created_by",
+            "created_by_username",
             "created_at",
             "resolved_at",
             "status_display",
@@ -194,6 +197,10 @@ class ReportSerializer(serializers.ModelSerializer):
 
     def get_assigned_to_username(self, obj):
         user = getattr(obj, "assigned_to", None)
+        return getattr(user, "username", None) if user else None
+
+    def get_created_by_username(self, obj):
+        user = getattr(obj, "created_by", None)
         return getattr(user, "username", None) if user else None
 
     def get_priority_score(self, obj):
