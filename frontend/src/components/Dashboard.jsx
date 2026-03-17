@@ -20,6 +20,7 @@ import {
 } from "recharts";
 
 import { fetchAnalyticsDashboard, fetchAnalyticsSummary, fetchReports, regenerateHotspots, updateReport, fetchCounties, fetchConstituencies, fetchCountyComparison, fetchConstituencyComparison, fetchAssignableUsers, fetchNotifications, markNotificationRead } from "../api";
+import ReportDetailCard from "./ReportDetailCard";
 
 const COLORS = ["#2563eb", "#ea580c", "#059669", "#7c3aed", "#dc2626", "#ca8a04", "#0891b2", "#db2777", "#4b5563", "#65a30d"];
 
@@ -1659,128 +1660,8 @@ export default function Dashboard({ role, userId, onHotspotsRegenerated }) {
         </>
       )}
 
-      {/* Detail overlay for a selected management report */}
       {selectedReport && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(15,23,42,0.55)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "1.5rem",
-            zIndex: 1000,
-          }}
-          onClick={() => setSelectedReport(null)}
-        >
-          <div
-            style={{
-              maxWidth: 640,
-              width: "100%",
-              maxHeight: "80vh",
-              overflow: "auto",
-              background: "#ffffff",
-              borderRadius: 14,
-              border: "1px solid #e2e8f0",
-              boxShadow: "0 24px 60px rgba(15,23,42,0.45)",
-              padding: "1.5rem 1.75rem",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
-              <h2
-                style={{
-                  margin: 0,
-                  fontSize: "1.25rem",
-                  fontWeight: 700,
-                  color: "#0f172a",
-                }}
-              >
-                {selectedReport.title}
-              </h2>
-              <button
-                type="button"
-                onClick={() => setSelectedReport(null)}
-                style={{
-                  border: "none",
-                  background: "transparent",
-                  color: "#64748b",
-                  cursor: "pointer",
-                  fontSize: 14,
-                  fontWeight: 600,
-                }}
-              >
-                ✕ Close
-              </button>
-            </div>
-            <p style={{ margin: "0 0 0.5rem 0", fontSize: 13, color: "#64748b" }}>
-              <strong style={{ color: "#0f172a" }}>{selectedReport.category}</strong>{" "}
-              • {selectedReport.status_display || selectedReport.status}{" "}
-              {selectedReport.created_at && (
-                <>
-                  • Reported{" "}
-                  {new Date(selectedReport.created_at).toLocaleDateString()}
-                </>
-              )}
-            </p>
-            <p style={{ margin: "0 0 0.5rem 0", fontSize: 13, color: "#64748b" }}>
-              Reported by{" "}
-              <strong style={{ color: "#0f172a" }}>
-                {selectedReport.created_by_username || "Unknown"}
-              </strong>
-              {selectedReport.assigned_to_username && (
-                <>
-                  {" "}
-                  • Assigned to{" "}
-                  <strong style={{ color: "#0f172a" }}>
-                    {selectedReport.assigned_to_username}
-                  </strong>
-                </>
-              )}
-            </p>
-            <p style={{ margin: "0.75rem 0 1rem 0", fontSize: 14, color: "#111827", lineHeight: 1.5 }}>
-              {selectedReport.description}
-            </p>
-            {selectedReport.images && selectedReport.images.length > 0 && (
-              <div style={{ marginBottom: "1rem" }}>
-                <div style={{ fontSize: 12, color: "#64748b", marginBottom: "0.35rem" }}>
-                  Photos ({selectedReport.images.length})
-                </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-                  {selectedReport.images.slice(0, 6).map((url, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        width: 96,
-                        height: 96,
-                        borderRadius: 8,
-                        overflow: "hidden",
-                        background: "#e5e7eb",
-                      }}
-                    >
-                      <img
-                        src={url}
-                        alt={`Report ${selectedReport.id} image ${idx + 1}`}
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div style={{ fontSize: 12, color: "#64748b" }}>
-              <span>
-                Priority score:{" "}
-                <strong style={{ color: "#0f172a" }}>
-                  {selectedReport.priority_score != null
-                    ? selectedReport.priority_score.toFixed(1)
-                    : "—"}
-                </strong>
-              </span>
-            </div>
-          </div>
-        </div>
+        <ReportDetailCard report={selectedReport} onClose={() => setSelectedReport(null)} />
       )}
     </div>
   );

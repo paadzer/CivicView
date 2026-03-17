@@ -6,6 +6,7 @@ import { MapContainer, Marker, Polygon, Popup, TileLayer, Tooltip, useMapEvents,
 import "leaflet/dist/leaflet.css";
 // Import Leaflet library for icon configuration
 import L from "leaflet";
+import ReportDetailCard from "./ReportDetailCard";
 
 // Default blue marker icon for displaying reports on the map
 const markerIcon = new L.Icon({
@@ -140,6 +141,7 @@ function MapView({ reports, hotspots, selectedLocation, onMapClick, showReportsL
   const [mapZoom, setMapZoom] = useState(IRELAND_ZOOM);
   const [userLocation, setUserLocation] = useState(null);
   const [locationError, setLocationError] = useState(null);
+  const [selectedReport, setSelectedReport] = useState(null);
 
   // Get user's current location on component mount using browser geolocation API
   useEffect(() => {
@@ -294,18 +296,21 @@ function MapView({ reports, hotspots, selectedLocation, onMapClick, showReportsL
                 key={report.id}
                 position={[report.geom.coordinates[1], report.geom.coordinates[0]]}
                 icon={getReportIcon(report.category)}
+                eventHandlers={{
+                  click: () => setSelectedReport(report),
+                }}
               >
-                <Popup>
-                  <strong>{report.title}</strong>
-                  {report.category && (
-                    <>
-                      <br />
-                      <em>{report.category}</em>
-                    </>
-                  )}
-                  <br />
-                  {report.description}
-                </Popup>
+                <Tooltip direction="top" offset={[0, -20]} opacity={0.9}>
+                  <div style={{ fontSize: "0.75rem" }}>
+                    <strong>{report.title}</strong>
+                    {report.category && (
+                      <>
+                        <br />
+                        <em>{report.category}</em>
+                      </>
+                    )}
+                  </div>
+                </Tooltip>
               </Marker>
             ))}
 
@@ -332,6 +337,12 @@ function MapView({ reports, hotspots, selectedLocation, onMapClick, showReportsL
             </Polygon>
           ))}
       </MapContainer>
+      {selectedReport && (
+        <ReportDetailCard
+          report={selectedReport}
+          onClose={() => setSelectedReport(null)}
+        />
+      )}
     </div>
   );
 }
