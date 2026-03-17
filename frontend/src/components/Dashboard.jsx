@@ -208,40 +208,63 @@ export default function Dashboard({ role, userId, onHotspotsRegenerated }) {
   ).sort();
 
   return (
-    <div style={{ 
-      padding: "2rem", 
-      maxWidth: "1400px", 
-      margin: "0 auto",
-      background: "#ffffff",
-      minHeight: "calc(100vh - 70px)",
-      borderRadius: "0"
-    }}>
-      <div style={{ marginBottom: "2rem" }}>
-        <h1 style={{ 
-          fontSize: "2rem", 
-          fontWeight: 700, 
-          margin: "0 0 0.5rem 0",
-          color: "#0f172a",
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-          backgroundClip: "text"
-        }}>
-          Analytics Dashboard
-        </h1>
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
-          <Link 
-            to="/" 
-            style={{ 
-              color: "#667eea", 
-              textDecoration: "none",
-              fontWeight: 500,
-              fontSize: "0.95rem"
-            }}
-          >
-            ← Back to map
-          </Link>
-          <div style={{ position: "relative" }}>
+    <div
+      style={{
+        padding: "2rem",
+        maxWidth: "1400px",
+        margin: "0 auto",
+        minHeight: "calc(100vh - 70px)",
+      }}
+    >
+      <div
+        style={{
+          marginBottom: "2rem",
+          background: "#1e3a5f",
+          borderRadius: 14,
+          padding: "1.25rem 1.75rem",
+          boxShadow: "0 18px 40px rgba(15,23,42,0.35)",
+          color: "white",
+          display: "flex",
+          flexDirection: "column",
+          gap: "0.75rem",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
+          <div>
+            <h1
+              style={{
+                margin: 0,
+                fontSize: "1.9rem",
+                fontWeight: 700,
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+                backgroundImage: "linear-gradient(135deg,#f9fafb 0%,#c7d2fe 50%,#3b82f6 100%)",
+              }}
+            >
+              Analytics Dashboard
+            </h1>
+            <p style={{ margin: "0.35rem 0 0 0", fontSize: "0.9rem", color: "rgba(226,232,240,0.9)" }}>
+              Monitor reports, manage workflow, and explore geographic trends across your area.
+            </p>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+            <Link
+              to="/"
+              style={{
+                color: "#e5e7eb",
+                textDecoration: "none",
+                fontWeight: 500,
+                fontSize: "0.95rem",
+                padding: "0.35rem 0.75rem",
+                borderRadius: 999,
+                border: "1px solid rgba(148,163,184,0.6)",
+                background: "rgba(15,23,42,0.6)",
+              }}
+            >
+              ← Back to map
+            </Link>
+            <div style={{ position: "relative" }}>
             <button
               type="button"
               onClick={() => {
@@ -251,11 +274,14 @@ export default function Dashboard({ role, userId, onHotspotsRegenerated }) {
                 setNotificationsOpen((o) => !o);
               }}
               style={{
-                padding: "0.35rem 0.75rem",
-                background: notifications.filter((n) => !n.read_at).length > 0 ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" : "#f1f5f9",
-                color: notifications.filter((n) => !n.read_at).length > 0 ? "white" : "#475569",
-                border: "1px solid #e2e8f0",
-                borderRadius: "8px",
+                padding: "0.35rem 0.8rem",
+                background:
+                  notifications.filter((n) => !n.read_at).length > 0
+                    ? "linear-gradient(135deg,#3b82f6 0%,#22c55e 100%)"
+                    : "rgba(15,23,42,0.9)",
+                color: "#e5e7eb",
+                border: "1px solid rgba(148,163,184,0.4)",
+                borderRadius: 999,
                 fontSize: "0.875rem",
                 fontWeight: 500,
                 cursor: "pointer"
@@ -264,7 +290,23 @@ export default function Dashboard({ role, userId, onHotspotsRegenerated }) {
               Notifications {notifications.filter((n) => !n.read_at).length > 0 ? `(${notifications.filter((n) => !n.read_at).length})` : ""}
             </button>
             {notificationsOpen && (
-              <div style={{ position: "absolute", top: "100%", left: 0, marginTop: "0.25rem", minWidth: 320, maxWidth: 400, maxHeight: 360, overflow: "auto", background: "white", border: "1px solid #e2e8f0", borderRadius: "8px", boxShadow: "0 10px 25px rgba(0,0,0,0.1)", zIndex: 50 }}>
+              <div
+                style={{
+                  position: "absolute",
+                  top: "100%",
+                  right: 0,
+                  marginTop: "0.4rem",
+                  minWidth: 320,
+                  maxWidth: 400,
+                  maxHeight: 360,
+                  overflow: "auto",
+                  background: "#ffffff",
+                  border: "1px solid #d9e2ec",
+                  borderRadius: 12,
+                  boxShadow: "0 20px 45px rgba(15,23,42,0.45)",
+                  zIndex: 50,
+                }}
+              >
                 {(notifications || []).length === 0 ? (
                   <div style={{ padding: "1rem", color: "#64748b", fontSize: "0.875rem" }}>No notifications</div>
                 ) : (
@@ -299,19 +341,27 @@ export default function Dashboard({ role, userId, onHotspotsRegenerated }) {
             )}
           </div>
         </div>
+        </div>
       </div>
 
-      {/* Tabs for splitting content into two shorter pages */}
-      <div style={{ marginBottom: "2rem", display: "flex", gap: "0.75rem" }}>
+      {/* Tabs for splitting content into sections */}
+      <div
+        style={{
+          marginBottom: "1.5rem",
+          display: "flex",
+          gap: "0.75rem",
+          flexWrap: "wrap",
+        }}
+      >
         <button
           type="button"
           onClick={() => setActiveTab("overview")}
           style={{
             padding: "0.5rem 1.25rem",
-            borderRadius: 999,
-            border: "2px solid " + (activeTab === "overview" ? "#667eea" : "#e5e7eb"),
-            background: activeTab === "overview" ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" : "#ffffff",
-            color: activeTab === "overview" ? "#ffffff" : "#475569",
+            borderRadius: "999px",
+            border: "1px solid " + (activeTab === "overview" ? "#1e3a5f" : "#d9e2ec"),
+            background: activeTab === "overview" ? "#1e3a5f" : "rgba(255,255,255,0.9)",
+            color: activeTab === "overview" ? "#f9fafb" : "#52606d",
             fontSize: 14,
             fontWeight: 600,
             cursor: "pointer",
@@ -325,10 +375,10 @@ export default function Dashboard({ role, userId, onHotspotsRegenerated }) {
           onClick={() => setActiveTab("management")}
           style={{
             padding: "0.5rem 1.25rem",
-            borderRadius: 999,
-            border: "2px solid " + (activeTab === "management" ? "#667eea" : "#e5e7eb"),
-            background: activeTab === "management" ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" : "#ffffff",
-            color: activeTab === "management" ? "#ffffff" : "#475569",
+            borderRadius: "999px",
+            border: "1px solid " + (activeTab === "management" ? "#1e3a5f" : "#d9e2ec"),
+            background: activeTab === "management" ? "#1e3a5f" : "rgba(255,255,255,0.9)",
+            color: activeTab === "management" ? "#f9fafb" : "#52606d",
             fontSize: 14,
             fontWeight: 600,
             cursor: "pointer",
@@ -342,10 +392,10 @@ export default function Dashboard({ role, userId, onHotspotsRegenerated }) {
           onClick={() => setActiveTab("lab")}
           style={{
             padding: "0.5rem 1.25rem",
-            borderRadius: 999,
-            border: "2px solid " + (activeTab === "lab" ? "#667eea" : "#e5e7eb"),
-            background: activeTab === "lab" ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" : "#ffffff",
-            color: activeTab === "lab" ? "#ffffff" : "#475569",
+            borderRadius: "999px",
+            border: "1px solid " + (activeTab === "lab" ? "#1e3a5f" : "#d9e2ec"),
+            background: activeTab === "lab" ? "#1e3a5f" : "rgba(255,255,255,0.9)",
+            color: activeTab === "lab" ? "#f9fafb" : "#52606d",
             fontSize: 14,
             fontWeight: 600,
             cursor: "pointer",
@@ -359,10 +409,10 @@ export default function Dashboard({ role, userId, onHotspotsRegenerated }) {
           onClick={() => setActiveTab("geographic")}
           style={{
             padding: "0.5rem 1.25rem",
-            borderRadius: 999,
-            border: "2px solid " + (activeTab === "geographic" ? "#667eea" : "#e5e7eb"),
-            background: activeTab === "geographic" ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" : "#ffffff",
-            color: activeTab === "geographic" ? "#ffffff" : "#475569",
+            borderRadius: "999px",
+            border: "1px solid " + (activeTab === "geographic" ? "#1e3a5f" : "#d9e2ec"),
+            background: activeTab === "geographic" ? "#1e3a5f" : "rgba(255,255,255,0.9)",
+            color: activeTab === "geographic" ? "#f9fafb" : "#52606d",
             fontSize: 14,
             fontWeight: 600,
             cursor: "pointer",
@@ -376,10 +426,10 @@ export default function Dashboard({ role, userId, onHotspotsRegenerated }) {
           onClick={() => setActiveTab("export")}
           style={{
             padding: "0.5rem 1.25rem",
-            borderRadius: 999,
-            border: "2px solid " + (activeTab === "export" ? "#667eea" : "#e5e7eb"),
-            background: activeTab === "export" ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" : "#ffffff",
-            color: activeTab === "export" ? "#ffffff" : "#475569",
+            borderRadius: "999px",
+            border: "1px solid " + (activeTab === "export" ? "#1e3a5f" : "#d9e2ec"),
+            background: activeTab === "export" ? "#1e3a5f" : "rgba(255,255,255,0.9)",
+            color: activeTab === "export" ? "#f9fafb" : "#52606d",
             fontSize: 14,
             fontWeight: 600,
             cursor: "pointer",
@@ -666,8 +716,15 @@ export default function Dashboard({ role, userId, onHotspotsRegenerated }) {
                                   item.id === r.id ? { ...item, status: newStatus, status_display: undefined } : item
                                 )
                               );
-                            } catch {
-                              // Ignore errors here; overall error banner will show if needed
+                            } catch (err) {
+                              const data = err.response?.data;
+                              setAssignmentError(
+                                data?.status ??
+                                  data?.detail ??
+                                  (typeof data === "string"
+                                    ? data
+                                    : "Failed to update status. Check your permissions.")
+                              );
                             }
                           }}
                           style={{
@@ -744,8 +801,15 @@ export default function Dashboard({ role, userId, onHotspotsRegenerated }) {
                                   item.id === r.id ? { ...item, target_resolution_date: value } : item
                                 )
                               );
-                            } catch {
-                              // ignore
+                            } catch (err) {
+                              const data = err.response?.data;
+                              setAssignmentError(
+                                data?.target_resolution_date ??
+                                  data?.detail ??
+                                  (typeof data === "string"
+                                    ? data
+                                    : "Failed to update target date. Check your permissions.")
+                              );
                             }
                           }}
                           style={{
@@ -792,8 +856,15 @@ export default function Dashboard({ role, userId, onHotspotsRegenerated }) {
                                     item.id === r.id ? { ...item, is_valid: newVal } : item
                                   )
                                 );
-                              } catch {
-                                // ignore errors, backend enforces permissions
+                              } catch (err) {
+                                const data = err.response?.data;
+                                setAssignmentError(
+                                  data?.is_valid ??
+                                    data?.detail ??
+                                    (typeof data === "string"
+                                      ? data
+                                      : "Failed to update validity. Check your permissions.")
+                                );
                               }
                             }}
                             style={{ width: "18px", height: "18px", cursor: "pointer", accentColor: "#667eea" }}
