@@ -9,12 +9,13 @@ import logging
 from django.http import HttpResponse
 import csv
 from .filters import ReportFilter
-from .models import County, DailConstituency, Hotspot, Report, ReportImage
+from .models import County, DailConstituency, Hotspot, LocalCouncil, Report, ReportImage
 from .permissions import IsCouncilOrAdmin, ReportPermission
 from .serializers import (
     CountySerializer,
     DailConstituencySerializer,
     HotspotSerializer,
+    LocalCouncilSerializer,
     ReportSerializer,
 )
 from .tasks import generate_hotspots
@@ -224,6 +225,34 @@ class DailConstituencyViewSet(viewsets.ReadOnlyModelViewSet):
                      WHERE ST_DWithin(r.geom::geography, d.boundary::geography, 2000)) AS report_count
                 FROM civicview_dailconstituency d
                 ORDER BY d.name
+            """)
+            rows = cursor.fetchall()
+        return Response([
+            {"id": r[0], "name": r[1], "report_count": r[2]}
+            for r in rows
+        ])
+
+
+# LocalCouncilViewSet: Provides read-only access to local council boundaries
+class LocalCouncilViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = LocalCouncil.objects.all().order_by("name")
+    serializer_class = LocalCouncilSerializer
+    permission_classes = [IsCouncilOrAdmin]
+
+    def list(self, request, *args, **kwargs):
+        if request.query_params.get("minimal"):
+            return self._list_minimal_councils()
+        return super().list(request, *args, **kwargs)
+
+    def _list_minimal_councils(self):
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT l.id, l.name,
+                    (SELECT COUNT(*) FROM civicview_report r
+                     WHERE ST_DWithin(r.geom::geography, l.boundary::geography, 2000)) AS report_count
+                FROM civicview_localcouncil l
+                ORDER BY l.name
             """)
             rows = cursor.fetchall()
         return Response([

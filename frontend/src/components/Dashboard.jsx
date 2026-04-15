@@ -1,6 +1,6 @@
 // Analytics dashboard for council/admin: summary stats and charts
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   Bar,
   BarChart,
@@ -19,10 +19,11 @@ import {
   Area,
 } from "recharts";
 
-import { fetchAnalyticsDashboard, fetchAnalyticsSummary, fetchReports, regenerateHotspots, updateReport, fetchCounties, fetchConstituencies, fetchCountyComparison, fetchConstituencyComparison, fetchAssignableUsers, fetchNotifications, markNotificationRead } from "../api";
+import { fetchAnalyticsDashboard, fetchAnalyticsSummary, fetchReports, regenerateHotspots, updateReport, fetchCounties, fetchConstituencies, fetchCouncils, fetchCountyComparison, fetchConstituencyComparison, fetchCouncilComparison, fetchAssignableUsers, fetchNotifications, markNotificationRead } from "../api";
 import ReportDetailCard from "./ReportDetailCard";
 
 const COLORS = ["#2563eb", "#ea580c", "#059669", "#7c3aed", "#dc2626", "#ca8a04", "#0891b2", "#db2777", "#4b5563", "#65a30d"];
+const ALLOWED_TABS = new Set(["overview", "management", "geographic", "lab", "export"]);
 
 // Priority bands for traffic-light: high >= 20, medium >= 10, low < 10 (or null/undefined)
 function getPriorityBand(score) {
@@ -40,6 +41,8 @@ function getPriorityColor(score) {
 }
 
 export default function Dashboard({ role, userId, onHotspotsRegenerated }) {
+  const location = useLocation();
+  const initialTab = new URLSearchParams(location.search).get("tab");
   const [summary, setSummary] = useState(null);
   const [dashboard, setDashboard] = useState(null);
   const [managementReports, setManagementReports] = useState([]);
@@ -56,7 +59,9 @@ export default function Dashboard({ role, userId, onHotspotsRegenerated }) {
   const [labLoading, setLabLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState("overview"); // "overview" | "management" | "geographic" | "lab" | "export"
+  const [activeTab, setActiveTab] = useState(
+    ALLOWED_TABS.has(initialTab) ? initialTab : "overview"
+  ); // "overview" | "management" | "geographic" | "lab" | "export"
   const [myAreaType, setMyAreaType] = useState(""); // "" | "county" | "constituency"
   const [myAreaId, setMyAreaId] = useState(null);
   const [notifications, setNotifications] = useState([]);
@@ -67,9 +72,11 @@ export default function Dashboard({ role, userId, onHotspotsRegenerated }) {
   // Geographic analysis state
   const [counties, setCounties] = useState([]);
   const [constituencies, setConstituencies] = useState([]);
+  const [councils, setCouncils] = useState([]);
   const [selectedCounties, setSelectedCounties] = useState([]);
   const [selectedConstituencies, setSelectedConstituencies] = useState([]);
-  const [comparisonType, setComparisonType] = useState("county"); // "county" | "constituency"
+  const [selectedCouncils, setSelectedCouncils] = useState([]);
+  const [comparisonType, setComparisonType] = useState("county"); // "county" | "constituency" | "council"
   const [comparisonData, setComparisonData] = useState(null);
   const [geoLoading, setGeoLoading] = useState(false);
   const [boundariesLoading, setBoundariesLoading] = useState(false);
@@ -80,6 +87,13 @@ export default function Dashboard({ role, userId, onHotspotsRegenerated }) {
   const isManagerOrAdmin = role === "manager" || role === "admin";
 
   useEffect(() => {
+    const urlTab = new URLSearchParams(location.search).get("tab");
+    if (urlTab && ALLOWED_TABS.has(urlTab)) {
+      setActiveTab(urlTab);
+    }
+  }, [location.search]);
+
+  useEffect(() => {
     if (!isDashboardUser) return;
     let cancelled = false;
     setLoading(true);
@@ -87,6 +101,7 @@ export default function Dashboard({ role, userId, onHotspotsRegenerated }) {
     const params = { ordering: "-created_at" };
     if (myAreaType === "county" && myAreaId) params.in_county = myAreaId;
     if (myAreaType === "constituency" && myAreaId) params.in_constituency = myAreaId;
+    if (myAreaType === "council" && myAreaId) params.in_council = myAreaId;
     Promise.all([fetchAnalyticsSummary(), fetchAnalyticsDashboard(), fetchReports(params)])
       .then(([summaryRes, dashboardRes, reportsRes]) => {
         if (!cancelled) {
@@ -132,11 +147,12 @@ export default function Dashboard({ role, userId, onHotspotsRegenerated }) {
     let cancelled = false;
     setBoundariesLoading(true);
     setBoundariesError(null);
-    Promise.all([fetchCounties({ minimal: 1 }), fetchConstituencies({ minimal: 1 })])
-      .then(([countiesRes, constituenciesRes]) => {
+    Promise.all([fetchCounties({ minimal: 1 }), fetchConstituencies({ minimal: 1 }), fetchCouncils({ minimal: 1 })])
+      .then(([countiesRes, constituenciesRes, councilsRes]) => {
         if (!cancelled) {
           setCounties(countiesRes.data || []);
           setConstituencies(constituenciesRes.data || []);
+          setCouncils(councilsRes.data || []);
           setBoundariesError(null);
         }
       })
@@ -179,10 +195,22 @@ export default function Dashboard({ role, userId, onHotspotsRegenerated }) {
         .finally(() => {
           setGeoLoading(false);
         });
+    } else if (comparisonType === "council" && selectedCouncils.length > 0) {
+      setGeoLoading(true);
+      fetchCouncilComparison(selectedCouncils)
+        .then((res) => {
+          setComparisonData(res.data);
+        })
+        .catch((err) => {
+          console.error("Failed to fetch comparison:", err);
+        })
+        .finally(() => {
+          setGeoLoading(false);
+        });
     } else {
       setComparisonData(null);
     }
-  }, [isDashboardUser, activeTab, comparisonType, selectedCounties, selectedConstituencies]);
+  }, [isDashboardUser, activeTab, comparisonType, selectedCounties, selectedConstituencies, selectedCouncils]);
 
   if (!isDashboardUser) {
     return (
@@ -609,6 +637,13 @@ export default function Dashboard({ role, userId, onHotspotsRegenerated }) {
                   <optgroup label="Constituencies">
                     {constituencies.map((c) => (
                       <option key={`constituency-${c.id}`} value={`constituency-${c.id}`}>{c.name}</option>
+                    ))}
+                  </optgroup>
+                )}
+                {councils?.length > 0 && (
+                  <optgroup label="Local Councils">
+                    {councils.map((c) => (
+                      <option key={`council-${c.id}`} value={`council-${c.id}`}>{c.name}</option>
                     ))}
                   </optgroup>
                 )}
@@ -1193,7 +1228,7 @@ export default function Dashboard({ role, userId, onHotspotsRegenerated }) {
               Geographic Comparison
             </h2>
             <p style={{ fontSize: "0.9rem", color: "#475569", marginBottom: "1rem", lineHeight: "1.5" }}>
-              Compare reports across counties or Dáil constituencies. Select areas below to see detailed statistics.
+              Compare reports across counties, Dáil constituencies, or local councils. Select areas below to see detailed statistics.
             </p>
 
             {/* Comparison type selector */}
@@ -1205,6 +1240,7 @@ export default function Dashboard({ role, userId, onHotspotsRegenerated }) {
                   setComparisonType(e.target.value);
                   setSelectedCounties([]);
                   setSelectedConstituencies([]);
+                  setSelectedCouncils([]);
                   setComparisonData(null);
                 }}
                 style={{
@@ -1219,6 +1255,7 @@ export default function Dashboard({ role, userId, onHotspotsRegenerated }) {
               >
                 <option value="county">County</option>
                 <option value="constituency">Dáil Constituency</option>
+                <option value="council">Local Council</option>
               </select>
             </div>
 
@@ -1247,7 +1284,7 @@ export default function Dashboard({ role, userId, onHotspotsRegenerated }) {
               </div>
             )}
 
-            {/* County/Constituency selectors */}
+            {/* County/Constituency/Council selectors */}
             {!boundariesLoading && !boundariesError && (
               <>
                 {comparisonType === "county" ? (
@@ -1296,7 +1333,7 @@ export default function Dashboard({ role, userId, onHotspotsRegenerated }) {
                       </div>
                     )}
                   </div>
-                ) : (
+                ) : comparisonType === "constituency" ? (
                   <div style={{ marginBottom: "1.5rem" }}>
                     <label style={{ fontSize: 14, fontWeight: 600, color: "#0f172a", display: "block", marginBottom: "0.5rem" }}>
                       Select constituencies to compare:
@@ -1338,6 +1375,53 @@ export default function Dashboard({ role, userId, onHotspotsRegenerated }) {
                               style={{ marginRight: "0.5rem", cursor: "pointer" }}
                             />
                             {constituency.name} ({constituency.report_count || 0})
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ marginBottom: "1.5rem" }}>
+                    <label style={{ fontSize: 14, fontWeight: 600, color: "#0f172a", display: "block", marginBottom: "0.5rem" }}>
+                      Select councils to compare:
+                    </label>
+                    {councils.length === 0 ? (
+                      <div style={{ padding: "1.5rem", textAlign: "center", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                        <p style={{ margin: 0, color: "#475569", fontSize: "0.875rem" }}>
+                          No councils found. Please import boundaries first.
+                        </p>
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", maxHeight: "300px", overflowY: "auto", padding: "0.5rem", border: "1px solid #e2e8f0", borderRadius: "8px", background: "#f8fafc" }}>
+                        {councils.map((council) => (
+                          <label
+                            key={council.id}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              padding: "0.5rem 0.75rem",
+                              borderRadius: "6px",
+                              border: selectedCouncils.includes(council.name) ? "2px solid #667eea" : "1px solid #cbd5e1",
+                              background: selectedCouncils.includes(council.name) ? "#eef2ff" : "white",
+                              cursor: "pointer",
+                              fontSize: 13,
+                              color: "#0f172a",
+                              whiteSpace: "nowrap"
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedCouncils.includes(council.name)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedCouncils([...selectedCouncils, council.name]);
+                                } else {
+                                  setSelectedCouncils(selectedCouncils.filter((n) => n !== council.name));
+                                }
+                              }}
+                              style={{ marginRight: "0.5rem", cursor: "pointer" }}
+                            />
+                            {council.name} ({council.report_count || 0})
                           </label>
                         ))}
                       </div>

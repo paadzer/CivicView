@@ -162,6 +162,24 @@ class DailConstituency(models.Model):
         return self.name
 
 
+# LocalCouncil model: Stores local council boundaries for analytics and filtering
+class LocalCouncil(models.Model):
+    # Council name (e.g., "Dublin City Council")
+    name = models.CharField(max_length=150, unique=True)
+    # MultiPolygon geometry for the council boundary in WGS84
+    boundary = models.MultiPolygonField(srid=4326)
+
+    class Meta:
+        verbose_name = "local council"
+        verbose_name_plural = "local councils"
+        indexes = [
+            models.Index(fields=["name"], name="local_council_name_idx"),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
 # Role choices for Profile
 # citizen: general public, can report issues
 # moderator: can edit/delete any report

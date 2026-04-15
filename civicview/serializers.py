@@ -8,7 +8,7 @@ from django.contrib.gis.geos import Point
 from rest_framework import serializers
 from django.utils import timezone
 
-from .models import County, DailConstituency, Hotspot, Notification, Profile, Report, ReportImage
+from .models import County, DailConstituency, Hotspot, LocalCouncil, Notification, Profile, Report, ReportImage
 
 
 # Valid latitude/longitude ranges (WGS84)
@@ -405,5 +405,41 @@ class DailConstituencySerializer(serializers.ModelSerializer):
                 return cursor.fetchone()[0]
         except Exception:
             # Fallback to simple intersection query
+            return Report.objects.filter(geom__intersects=obj.boundary).count()
+
+
+class LocalCouncilSerializer(serializers.ModelSerializer):
+    # Return geometry as GeoJSON when reading (read-only, computed field)
+    geom = serializers.SerializerMethodField(read_only=True)
+    # Count of reports within this council boundary
+    report_count = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = LocalCouncil
+        fields = ["id", "name", "geom", "report_count"]
+        read_only_fields = ["id", "geom", "report_count"]
+
+    def get_geom(self, obj):
+        """Convert PostGIS MultiPolygon to GeoJSON format."""
+        return json.loads(obj.boundary.geojson)
+
+    def get_report_count(self, obj):
+        """Count reports that fall within this council boundary."""
+        if not obj.boundary:
+            return 0
+        try:
+            from django.db import connection
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT COUNT(*)
+                    FROM civicview_report
+                    WHERE ST_DWithin(
+                        geom::geography,
+                        %s::geography,
+                        2000
+                    )
+                """, [obj.boundary.ewkb])
+                return cursor.fetchone()[0]
+        except Exception:
             return Report.objects.filter(geom__intersects=obj.boundary).count()
 

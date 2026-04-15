@@ -65,6 +65,10 @@ export const fetchConstituencyComparison = (constituencyNames) =>
   api.get("analytics/constituency-comparison/", {
     params: { constituencies: constituencyNames.join(",") },
   });
+export const fetchCouncilComparison = (councilNames) =>
+  api.get("analytics/council-comparison/", {
+    params: { councils: councilNames.join(",") },
+  });
 export const fetchGeographicReports = (type, name) =>
   api.get("analytics/geographic-reports/", {
     params: { type, name },
@@ -73,5 +77,6 @@ export const fetchGeographicReports = (type, name) =>
 // Boundaries (council/admin only). Use minimal=1 for fast list (id, name, report_count) without geometry.
 export const fetchCounties = (params = {}) => api.get("counties/", { params });
 export const fetchConstituencies = (params = {}) => api.get("constituencies/", { params });
+export const fetchCouncils = (params = {}) => api.get("councils/", { params });
 
 export default api;

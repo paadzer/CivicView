@@ -1,6 +1,6 @@
 # Import Django admin for model registration
 from django.contrib import admin
-from .models import Hotspot, Notification, Profile, Report, ReportImage
+from .models import County, DailConstituency, Hotspot, LocalCouncil, Notification, Profile, Report, ReportImage
 
 
 # Register Report model in Django admin interface
@@ -42,3 +42,21 @@ class NotificationAdmin(admin.ModelAdmin):
 class ReportImageAdmin(admin.ModelAdmin):
     list_display = ("id", "report", "created_at")
     list_filter = ("created_at",)
+
+
+@admin.register(County)
+class CountyAdmin(admin.ModelAdmin):
+    list_display = ("id", "name")
+    search_fields = ("name",)
+
+
+@admin.register(DailConstituency)
+class DailConstituencyAdmin(admin.ModelAdmin):
+    list_display = ("id", "name")
+    search_fields = ("name",)
+
+
+@admin.register(LocalCouncil)
+class LocalCouncilAdmin(admin.ModelAdmin):
+    list_display = ("id", "name")
+    search_fields = ("name",)

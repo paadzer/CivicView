@@ -8,7 +8,7 @@ from django.utils import timezone
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import County, DailConstituency, Report
+from .models import County, DailConstituency, LocalCouncil, Report
 from .permissions import IsCouncilOrAdmin
 
 
@@ -338,13 +338,87 @@ class ConstituencyComparisonView(APIView):
         return Response({"comparison": comparison_data})
 
 
+class CouncilComparisonView(APIView):
+    """GET /api/analytics/council-comparison/?councils=Dublin City Council,Fingal County Council."""
+
+    permission_classes = [IsCouncilOrAdmin]
+
+    def get(self, request):
+        council_names = request.query_params.get("councils", "").split(",")
+        council_names = [name.strip() for name in council_names if name.strip()]
+
+        if not council_names:
+            return Response({"error": "Please provide council names in ?councils= parameter"}, status=400)
+
+        comparison_data = []
+        for council_name in council_names:
+            try:
+                council = LocalCouncil.objects.get(name__icontains=council_name)
+                reports_in_council = get_reports_within_boundary(council.boundary, buffer_meters=2000)
+                total = reports_in_council.count()
+                by_status = (
+                    reports_in_council.values("status")
+                    .annotate(count=Count("id"))
+                    .order_by("-count")
+                )
+                by_category = (
+                    reports_in_council.values("category")
+                    .annotate(count=Count("id"))
+                    .order_by("-count")[:5]
+                )
+
+                resolved = reports_in_council.filter(
+                    status=Report.STATUS_RESOLVED,
+                    resolved_at__isnull=False,
+                )
+                avg_resolution = resolved.annotate(
+                    resolution_time=F("resolved_at") - F("created_at")
+                ).aggregate(avg_resolution=Avg("resolution_time"))["avg_resolution"]
+                avg_resolution_days = (
+                    avg_resolution.total_seconds() / 86400.0 if avg_resolution else None
+                )
+
+                now = timezone.now()
+                start = now - timedelta(days=30)
+                reports_over_time = (
+                    reports_in_council.filter(created_at__gte=start)
+                    .annotate(date=TruncDate("created_at"))
+                    .values("date")
+                    .annotate(count=Count("id"))
+                    .order_by("date")
+                )
+                date_counts = OrderedDict()
+                for i in range(31):
+                    d = (now - timedelta(days=30 - i)).date()
+                    date_counts[str(d)] = 0
+                for row in reports_over_time:
+                    date_counts[str(row["date"])] = row["count"]
+                reports_per_day = [{"date": k, "count": v} for k, v in date_counts.items()]
+
+                comparison_data.append({
+                    "name": council.name,
+                    "total_reports": total,
+                    "by_status": list(by_status),
+                    "top_categories": list(by_category),
+                    "average_resolution_time_days": avg_resolution_days,
+                    "reports_over_time": reports_per_day,
+                })
+            except LocalCouncil.DoesNotExist:
+                comparison_data.append({
+                    "name": council_name,
+                    "error": "Council not found",
+                })
+
+        return Response({"comparison": comparison_data})
+
+
 class GeographicReportsView(APIView):
     """GET /api/analytics/geographic-reports/?type=county&name=DUBLIN - Get reports within a specific geographic area (council/admin only)."""
 
     permission_classes = [IsCouncilOrAdmin]
 
     def get(self, request):
-        geo_type = request.query_params.get("type", "").lower()  # "county" or "constituency"
+        geo_type = request.query_params.get("type", "").lower()  # "county", "constituency" or "council"
         name = request.query_params.get("name", "").strip()
 
         if not geo_type or not name:
@@ -355,8 +429,10 @@ class GeographicReportsView(APIView):
                 boundary_obj = County.objects.get(name__iexact=name)
             elif geo_type == "constituency":
                 boundary_obj = DailConstituency.objects.get(name__icontains=name)
+            elif geo_type == "council":
+                boundary_obj = LocalCouncil.objects.get(name__icontains=name)
             else:
-                return Response({"error": "Type must be 'county' or 'constituency'"}, status=400)
+                return Response({"error": "Type must be 'county', 'constituency' or 'council'"}, status=400)
 
             reports = Report.objects.filter(geom__intersects=boundary_obj.boundary).order_by("-created_at")
             
@@ -370,5 +446,5 @@ class GeographicReportsView(APIView):
                 "reports": serializer.data,
                 "total_count": reports.count(),
             })
-        except (County.DoesNotExist, DailConstituency.DoesNotExist):
+        except (County.DoesNotExist, DailConstituency.DoesNotExist, LocalCouncil.DoesNotExist):
             return Response({"error": f"{geo_type.capitalize()} not found"}, status=404)

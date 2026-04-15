@@ -7,7 +7,7 @@ from django.contrib.gis.geos import MultiPolygon, Polygon
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from civicview.models import County, Profile
+from civicview.models import County, LocalCouncil, Profile
 from civicview.tests.base import no_throttle
 from civicview.tests.factories import create_token_user, create_user
 
@@ -96,6 +96,10 @@ class BoundaryAPITests(APITestCase):
             name=f"API_Test_County_{id(self)}",
             boundary=MultiPolygon(poly),
         )
+        self.council = LocalCouncil.objects.create(
+            name=f"API_Test_Council_{id(self)}",
+            boundary=MultiPolygon(poly),
+        )
 
     def test_counties_forbidden_for_citizen(self):
         _, token = create_token_user("cit_county", role=Profile.ROLE_CITIZEN)
@@ -118,3 +122,17 @@ class BoundaryAPITests(APITestCase):
         self.assertEqual(r.status_code, status.HTTP_200_OK)
         row = next(x for x in r.data if x["id"] == self.county.id)
         self.assertIn("report_count", row)
+
+    def test_councils_forbidden_for_citizen(self):
+        _, token = create_token_user("cit_council", role=Profile.ROLE_CITIZEN)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {token.key}")
+        r = self.client.get("/api/councils/")
+        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_councils_allowed_for_staff(self):
+        _, token = create_token_user("staff_council", role=Profile.ROLE_STAFF)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {token.key}")
+        r = self.client.get("/api/councils/")
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        ids = [row["id"] for row in r.data]
+        self.assertIn(self.council.id, ids)

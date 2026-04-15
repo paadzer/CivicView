@@ -5,7 +5,7 @@ import django_filters
 from django.utils import timezone
 
 from .analytics_views import get_reports_within_boundary
-from .models import County, DailConstituency, Report
+from .models import County, DailConstituency, LocalCouncil, Report
 
 
 # Preset period values for "Filter by time" (historical / timestamp filtering)
@@ -67,6 +67,7 @@ class ReportFilter(django_filters.FilterSet):
     )
     in_county = django_filters.NumberFilter(method="filter_in_county")
     in_constituency = django_filters.NumberFilter(method="filter_in_constituency")
+    in_council = django_filters.NumberFilter(method="filter_in_council")
 
     class Meta:
         model = Report
@@ -78,6 +79,7 @@ class ReportFilter(django_filters.FilterSet):
             "created_before",
             "in_county",
             "in_constituency",
+            "in_council",
         ]
 
     def filter_period(self, queryset, name, value):
@@ -106,4 +108,13 @@ class ReportFilter(django_filters.FilterSet):
         if not constituency or not constituency.boundary:
             return queryset.none()
         report_ids = get_reports_within_boundary(constituency.boundary).values_list("id", flat=True)
+        return queryset.filter(id__in=report_ids)
+
+    def filter_in_council(self, queryset, name, value):
+        if value is None:
+            return queryset
+        council = LocalCouncil.objects.filter(pk=value).first()
+        if not council or not council.boundary:
+            return queryset.none()
+        report_ids = get_reports_within_boundary(council.boundary).values_list("id", flat=True)
         return queryset.filter(id__in=report_ids)

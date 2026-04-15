@@ -6,6 +6,7 @@ from rest_framework.routers import DefaultRouter
 from .analytics_views import (
     AnalyticsDashboardView,
     AnalyticsSummaryView,
+    CouncilComparisonView,
     ConstituencyComparisonView,
     CountyComparisonView,
     GeographicReportsView,
@@ -16,6 +17,7 @@ from .views import (
     CountyViewSet,
     DailConstituencyViewSet,
     HotspotViewSet,
+    LocalCouncilViewSet,
     ReportViewSet,
 )
 
@@ -35,6 +37,8 @@ router.register(r"hotspots", HotspotViewSet, basename="hotspot")
 router.register(r"counties", CountyViewSet, basename="county")
 # Register DailConstituencyViewSet at /api/constituencies/ endpoint (council/admin only)
 router.register(r"constituencies", DailConstituencyViewSet, basename="constituency")
+# Register LocalCouncilViewSet at /api/councils/ endpoint (council/admin only)
+router.register(r"councils", LocalCouncilViewSet, basename="council")
 
 # Auth and analytics (council/admin only for analytics)
 urlpatterns = router.urls + [
@@ -48,6 +52,7 @@ urlpatterns = router.urls + [
     path("analytics/dashboard/", AnalyticsDashboardView.as_view(), name="api_analytics_dashboard"),
     path("analytics/county-comparison/", CountyComparisonView.as_view(), name="api_county_comparison"),
     path("analytics/constituency-comparison/", ConstituencyComparisonView.as_view(), name="api_constituency_comparison"),
+    path("analytics/council-comparison/", CouncilComparisonView.as_view(), name="api_council_comparison"),
     path("analytics/geographic-reports/", GeographicReportsView.as_view(), name="api_geographic_reports"),
 ]
 

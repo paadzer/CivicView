@@ -16,6 +16,7 @@ import {
 } from "./api";
 // Import React components
 import Dashboard from "./components/Dashboard";
+import AdvancedAnalyticsWrapper from "./components/AdvancedAnalyticsWrapper";
 import MapView from "./components/MapView";
 import ReportForm from "./components/ReportForm";
 
@@ -234,6 +235,21 @@ function App() {
             Dashboard
           </Link>
         )}
+        {isLoggedIn && isDashboardUser && (
+          <Link to="/advanced-analytics" style={{ 
+            color: "#667eea", 
+            textDecoration: "none",
+            fontWeight: 500,
+            padding: "0.5rem 1rem",
+            borderRadius: "8px",
+            transition: "all 0.2s"
+          }}
+          onMouseEnter={(e) => e.target.style.background = "rgba(102, 126, 234, 0.1)"}
+          onMouseLeave={(e) => e.target.style.background = "transparent"}
+          >
+            Advanced Analytics
+          </Link>
+        )}
         {isLoggedIn ? (
           <span style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "1rem" }}>
             <span style={{ color: "#64748b", fontSize: "0.9rem" }}>
@@ -270,6 +286,7 @@ function App() {
 
       <Routes>
         <Route path="/dashboard" element={<Dashboard role={role} userId={userId} onHotspotsRegenerated={refreshHotspots} />} />
+        <Route path="/advanced-analytics" element={<AdvancedAnalyticsWrapper role={role} />} />
         <Route path="/" element={
     <main className="layout">
       <section className="panel" style={{ maxWidth: "450px", minWidth: "350px" }}>

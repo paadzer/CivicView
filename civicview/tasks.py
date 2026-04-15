@@ -5,6 +5,7 @@ from django.contrib.gis.geos import MultiPolygon, Point, Polygon
 # Import Shapely for geometric operations
 from shapely.geometry import Point as ShapelyPoint
 from shapely.ops import unary_union
+from shapely import wkt as shapely_wkt
 # Import DBSCAN clustering algorithm from scikit-learn
 from sklearn.cluster import DBSCAN
 
@@ -19,6 +20,7 @@ EPS_METERS = 250  # Maximum distance between points to be in same cluster (250m)
 MIN_SAMPLES = 5  # Minimum number of reports needed to form a cluster (lowered for better clustering)
 BUFFER_METERS = 120  # Buffer radius for creating polygons from points
 SIMPLIFY_TOLERANCE_METERS = 15  # Simplify tolerance for reducing polygon complexity
+MERGE_THRESHOLD_RATIO = 0.30  # Merge nearby hotspot borders if within 30% of buffer radius
 
 
 # Main task: Generate hotspot clusters from existing reports using DBSCAN
@@ -106,8 +108,8 @@ def generate_hotspots(days_back=30, eps_meters=None, min_samples=None):
         # Add point to its cluster group
         clusters.setdefault(label, []).append((lon, lat))
 
-    # Create Hotspot records for each cluster using buffered union method
-    created = 0
+    # Build hotspot polygons for each cluster using buffered union method
+    raw_polygons = []
     
     for cluster_id, points in clusters.items():
         # Skip clusters that are too small (shouldn't happen due to min_samples, but safety check)
@@ -124,12 +126,19 @@ def generate_hotspots(days_back=30, eps_meters=None, min_samples=None):
                     # Find the largest polygon by area
                     largest = max(polygon, key=lambda p: p.area)
                     polygon = largest
-                
-                Hotspot.objects.create(cluster_id=cluster_id, geom=polygon)
-                created += 1
+                raw_polygons.append((cluster_id, polygon))
         except Exception as e:
             # Skip clusters that fail polygon generation
             continue
+
+    # Merge polygons that have very close borders to avoid visually fragmented hotspots.
+    merge_threshold_meters = BUFFER_METERS * MERGE_THRESHOLD_RATIO
+    merged_polygons = _merge_nearby_polygons(raw_polygons, merge_threshold_meters)
+
+    created = 0
+    for cluster_id, polygon in merged_polygons:
+        Hotspot.objects.create(cluster_id=cluster_id, geom=polygon)
+        created += 1
 
     # Return summary statistics
     return {
@@ -140,6 +149,63 @@ def generate_hotspots(days_back=30, eps_meters=None, min_samples=None):
         "eps_meters": eps,
         "min_samples": min_samp,
     }
+
+
+def _merge_nearby_polygons(cluster_polygons, threshold_meters):
+    """
+    Merge hotspot polygons when their borders are close.
+
+    Strategy:
+    1. Transform polygons to EPSG:3857 for meter-based distance checks.
+    2. Apply morphological close (buffer out, union, buffer in) to join
+       polygons with gaps smaller than `threshold_meters`.
+    3. Transform merged polygons back to WGS84.
+
+    Args:
+        cluster_polygons: list[tuple[int, Polygon]] in WGS84
+        threshold_meters: distance threshold to merge close borders
+
+    Returns:
+        list[tuple[int, Polygon]] merged polygons in WGS84
+    """
+    if not cluster_polygons:
+        return []
+    if len(cluster_polygons) == 1 or threshold_meters <= 0:
+        return cluster_polygons
+
+    # Preserve deterministic ids by using first-seen cluster_id per merged geometry.
+    projected = []
+    for cluster_id, polygon in cluster_polygons:
+        poly_3857 = polygon.transform(3857, clone=True)
+        projected.append((cluster_id, shapely_wkt.loads(poly_3857.wkt)))
+
+    # Buffer-expand then contract to stitch nearby borders together.
+    grow_by = threshold_meters / 2.0
+    expanded = [geom.buffer(grow_by) for _, geom in projected]
+    merged_expanded = unary_union(expanded)
+    merged = merged_expanded.buffer(-grow_by)
+
+    # Normalise merged output into iterable polygons.
+    if merged.geom_type == "Polygon":
+        merged_geoms = [merged]
+    elif merged.geom_type == "MultiPolygon":
+        merged_geoms = list(merged.geoms)
+    else:
+        return cluster_polygons
+
+    # Match each merged polygon to nearest original cluster id.
+    merged_results = []
+    for merged_geom in merged_geoms:
+        if merged_geom.is_empty or not merged_geom.exterior.coords:
+            continue
+        closest_cluster_id = min(
+            projected,
+            key=lambda item: merged_geom.distance(item[1]),
+        )[0]
+        merged_geos = Polygon(tuple(merged_geom.exterior.coords), srid=3857)
+        merged_wgs84 = merged_geos.transform(4326, clone=True)
+        merged_results.append((closest_cluster_id, merged_wgs84))
+    return merged_results if merged_results else cluster_polygons
 
 
 def _create_buffered_polygon(points_wgs84):

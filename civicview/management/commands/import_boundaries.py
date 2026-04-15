@@ -5,11 +5,11 @@ import os
 from django.contrib.gis.geos import GEOSGeometry, MultiPolygon
 from django.core.management.base import BaseCommand
 
-from civicview.models import County, DailConstituency
+from civicview.models import County, DailConstituency, LocalCouncil
 
 
 class Command(BaseCommand):
-    help = "Import GeoJSON boundary files for counties and Dáil constituencies"
+    help = "Import GeoJSON boundary files for counties, local councils and Dáil constituencies"
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -25,6 +25,12 @@ class Command(BaseCommand):
             help="Path to Dáil constituencies GeoJSON file",
         )
         parser.add_argument(
+            "--councils",
+            type=str,
+            default="civicview/data/boundaries/local_councils_ireland.geojson",
+            help="Path to local councils GeoJSON file",
+        )
+        parser.add_argument(
             "--clear",
             action="store_true",
             help="Clear existing boundaries before importing",
@@ -33,6 +39,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         counties_path = options["counties"]
         constituencies_path = options["constituencies"]
+        councils_path = options["councils"]
         clear_existing = options["clear"]
 
         # Clear existing data if requested
@@ -40,6 +47,7 @@ class Command(BaseCommand):
             self.stdout.write("Clearing existing boundaries...")
             County.objects.all().delete()
             DailConstituency.objects.all().delete()
+            LocalCouncil.objects.all().delete()
             self.stdout.write(self.style.SUCCESS("Cleared existing boundaries"))
 
         # Import counties
@@ -49,6 +57,15 @@ class Command(BaseCommand):
         else:
             self.stdout.write(
                 self.style.WARNING(f"Counties file not found: {counties_path}")
+            )
+
+        # Import local councils
+        if os.path.exists(councils_path):
+            self.stdout.write(f"Importing local councils from {councils_path}...")
+            self._import_councils(councils_path)
+        else:
+            self.stdout.write(
+                self.style.WARNING(f"Councils file not found: {councils_path}")
             )
 
         # Import constituencies
@@ -240,5 +257,112 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(
                 f"Dáil Constituencies: {imported} imported, {updated} updated, {errors} errors"
+            )
+        )
+
+    def _import_councils(self, file_path):
+        """Import local council boundaries from GeoJSON file."""
+        with open(file_path, "r", encoding="utf-8") as f:
+            geojson_data = json.load(f)
+
+        source_srid = None
+        if "crs" in geojson_data:
+            crs_props = geojson_data["crs"].get("properties", {})
+            crs_name = crs_props.get("name", "")
+            if "EPSG:2157" in crs_name:
+                source_srid = 2157
+            elif "EPSG:4326" in crs_name:
+                source_srid = 4326
+
+        imported = 0
+        updated = 0
+        errors = 0
+        council_parts = {}
+
+        for feature in geojson_data.get("features", []):
+            properties = feature.get("properties", {})
+            try:
+                # Support common field names used in local authority datasets.
+                council_name = (
+                    properties.get("ENG_NAME_VALUE")
+                    or properties.get("COUNCIL")
+                    or properties.get("NAME")
+                    or properties.get("name")
+                    or ""
+                ).strip()
+
+                if not council_name:
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f"Skipping feature with no council name property: {properties}"
+                        )
+                    )
+                    continue
+
+                geometry = GEOSGeometry(json.dumps(feature["geometry"]))
+
+                if source_srid:
+                    geometry.srid = source_srid
+                elif geometry.srid is None:
+                    try:
+                        x_min, y_min, x_max, y_max = geometry.extent
+                        if (
+                            x_min > 100000
+                            and x_max < 1000000
+                            and y_min > 100000
+                            and y_max < 1000000
+                        ):
+                            geometry.srid = 2157
+                        else:
+                            geometry.srid = 4326
+                    except Exception:
+                        geometry.srid = 2157
+
+                if geometry.srid != 4326:
+                    geometry.transform(4326)
+
+                # Collect polygon parts for later dissolve/merge by council.
+                council_parts.setdefault(council_name, []).append(geometry)
+
+            except Exception as e:
+                errors += 1
+                self.stdout.write(
+                    self.style.ERROR(
+                        f"Error reading council feature {properties.get('ENG_NAME_VALUE', properties.get('NAME', 'unknown'))}: {str(e)}"
+                    )
+                )
+
+        # Dissolve all parts per council into one MultiPolygon boundary.
+        for council_name, parts in council_parts.items():
+            try:
+                dissolved = parts[0]
+                for part in parts[1:]:
+                    dissolved = dissolved.union(part)
+
+                if dissolved.geom_type == "Polygon":
+                    dissolved = MultiPolygon(dissolved)
+                elif dissolved.geom_type != "MultiPolygon":
+                    polygons = [g for g in getattr(dissolved, "geoms", []) if g.geom_type == "Polygon"]
+                    if not polygons:
+                        raise ValueError(f"Unsupported dissolved geometry type: {dissolved.geom_type}")
+                    dissolved = MultiPolygon(*polygons)
+
+                _, created = LocalCouncil.objects.update_or_create(
+                    name=council_name,
+                    defaults={"boundary": dissolved},
+                )
+                if created:
+                    imported += 1
+                else:
+                    updated += 1
+            except Exception as e:
+                errors += 1
+                self.stdout.write(
+                    self.style.ERROR(f"Error dissolving council {council_name}: {str(e)}")
+                )
+
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Local Councils: {imported} imported, {updated} updated, {errors} errors"
             )
         )
