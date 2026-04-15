@@ -1,5 +1,6 @@
 # Import standard library modules
 import os
+import sys
 from pathlib import Path
 # Import django-environ for environment variable management
 import environ
@@ -105,22 +106,34 @@ WSGI_APPLICATION = "civicview_project.wsgi.application"
 
 # Database configuration: Uses PostgreSQL with PostGIS extension
 # PostGIS enables spatial data types (Point, Polygon) and geographic queries
-DATABASES = {
-    "default": {
-        # PostGIS database backend (required for GeoDjango)
-        "ENGINE": "django.contrib.gis.db.backends.postgis",
-        # Database name (must exist and have PostGIS extension enabled)
-        "NAME": env("DATABASE_NAME"),
-        # PostgreSQL username
-        "USER": env("DATABASE_USER"),
-        # PostgreSQL password
-        "PASSWORD": env("DATABASE_PASSWORD"),
-        # Database host (localhost for local development)
-        "HOST": env("DATABASE_HOST", default="localhost"),
-        # PostgreSQL port (default is 5432)
-        "PORT": env("DATABASE_PORT", default="5432"),
+#
+# When running `manage.py test`, use SpatiaLite so the suite runs without .env / Postgres.
+# Production and `runserver` still use PostGIS.
+_RUNNING_TESTS = len(sys.argv) > 1 and sys.argv[1] == "test"
+if _RUNNING_TESTS:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.contrib.gis.db.backends.spatialite",
+            "NAME": str(BASE_DIR / ".test_spatialite.db"),
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            # PostGIS database backend (required for GeoDjango)
+            "ENGINE": "django.contrib.gis.db.backends.postgis",
+            # Database name (must exist and have PostGIS extension enabled)
+            "NAME": env("DATABASE_NAME"),
+            # PostgreSQL username
+            "USER": env("DATABASE_USER"),
+            # PostgreSQL password
+            "PASSWORD": env("DATABASE_PASSWORD"),
+            # Database host (localhost for local development)
+            "HOST": env("DATABASE_HOST", default="localhost"),
+            # PostgreSQL port (default is 5432)
+            "PORT": env("DATABASE_PORT", default="5432"),
+        }
+    }
 
 # ------------------------------------------------------------
 # Password Validation
@@ -188,6 +201,13 @@ REST_FRAMEWORK = {
         "anon": "5/minute",
     },
 }
+
+# Anonymous integration tests hit list endpoints many times; disable throttling under `manage.py test`
+if _RUNNING_TESTS:
+    REST_FRAMEWORK = {
+        **REST_FRAMEWORK,
+        "DEFAULT_THROTTLE_CLASSES": [],
+    }
 
 # ------------------------------------------------------------
 # CORS (React Frontend)

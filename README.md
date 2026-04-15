@@ -477,6 +477,27 @@ docker compose down
 
 ## Verification & Testing
 
+### Automated test suite
+
+- **Backend (Django + DRF + PostGIS/SpatiaLite):** from the project root with your Conda env active:
+  ```bash
+  python manage.py test civicview.tests
+  ```
+  `manage.py test` uses a local **SpatiaLite** file (`.test_spatialite.db`) so you do not need Postgres or `.env` for the default run. County/constituency API tests that rely on PostgreSQL `::geography` SQL are **skipped** unless you run against PostGIS (production settings).
+
+- **Frontend (Vitest + jsdom):**
+  ```bash
+  cd frontend
+  npm test
+  ```
+
+- **Offline evaluation report (JSON):** same env as normal Django (requires `.env` / database like `runserver`):
+  ```bash
+  python manage.py evaluate_system
+  python manage.py evaluate_system --include-db-counts
+  ```
+  Produces synthetic DBSCAN metrics, a fixed coordinate-validation matrix, and optional live DB counts for documentation or CI artifacts.
+
 ### Verify Backend is Running
 
 1. **Check Django server**: Visit `http://127.0.0.1:8000/admin/` - you should see the Django admin login page

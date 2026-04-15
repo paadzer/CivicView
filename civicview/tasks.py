@@ -111,7 +111,7 @@ def generate_hotspots(days_back=30, eps_meters=None, min_samples=None):
     
     for cluster_id, points in clusters.items():
         # Skip clusters that are too small (shouldn't happen due to min_samples, but safety check)
-        if len(points) < MIN_SAMPLES:
+        if len(points) < min_samp:
             continue
         
         # Generate polygon using buffered union method

@@ -4,6 +4,7 @@ __pycache__/
 env/
 venv/
 *.sqlite3
+.test_spatialite.db
 
 # Environment / secrets
 .env
@@ -17,3 +18,5 @@ yarn-error.log*
 # OS files
 .DS_Store
 Thumbs.db
+
+node_modules/

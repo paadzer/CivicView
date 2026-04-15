@@ -1,6 +1,8 @@
 // Import Axios for making HTTP requests to the Django API
 import axios from "axios";
 
+import { getStoredToken, setAuthToken, getStoredUser } from "./lib/authStorage.js";
+
 // Create Axios instance with base URL for all API requests
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "https://civicview-production.up.railway.app";
@@ -10,22 +12,8 @@ const api = axios.create({
   baseURL: `${API_BASE_URL.replace(/\/+$/, "")}/api/`,
 });
 
-// Auth token: add to requests when present (for create report, etc.)
-const AUTH_TOKEN_KEY = "civicview_token";
-
-const AUTH_USER_KEY = "civicview_user";
-
-export const getStoredToken = () => localStorage.getItem(AUTH_TOKEN_KEY);
-export const getStoredUser = () => localStorage.getItem(AUTH_USER_KEY);
-export const setAuthToken = (token, username = null) => {
-  if (token) {
-    localStorage.setItem(AUTH_TOKEN_KEY, token);
-    if (username) localStorage.setItem(AUTH_USER_KEY, username);
-  } else {
-    localStorage.removeItem(AUTH_TOKEN_KEY);
-    localStorage.removeItem(AUTH_USER_KEY);
-  }
-};
+// Re-export auth helpers for components that already import from api.js
+export { getStoredToken, getStoredUser, setAuthToken };
 
 api.interceptors.request.use((config) => {
   const token = getStoredToken();

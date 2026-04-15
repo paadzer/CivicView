@@ -1,11 +1,7 @@
 // Import React hooks for state management and side effects
 import { useState, useEffect } from "react";
 
-// Ireland bounds for location validation (match backend)
-const IRELAND_LAT_MIN = 51.4;
-const IRELAND_LAT_MAX = 55.4;
-const IRELAND_LON_MIN = -11.0;
-const IRELAND_LON_MAX = -5.0;
+import { validateIrelandLocation } from "../lib/locationValidation.js";
 
 const initialState = {
   title: "",
@@ -53,25 +49,12 @@ function ReportForm({ onSubmit, loading, selectedLocation, onLocationChange, cat
     });
   };
 
-  const validateLocation = (lat, lon) => {
-    const numLat = parseFloat(lat);
-    const numLon = parseFloat(lon);
-    if (isNaN(numLat) || isNaN(numLon)) return null;
-    if (numLat < IRELAND_LAT_MIN || numLat > IRELAND_LAT_MAX) {
-      return `Latitude must be between ${IRELAND_LAT_MIN} and ${IRELAND_LAT_MAX} (Ireland).`;
-    }
-    if (numLon < IRELAND_LON_MIN || numLon > IRELAND_LON_MAX) {
-      return `Longitude must be between ${IRELAND_LON_MIN} and ${IRELAND_LON_MAX} (Ireland).`;
-    }
-    return null;
-  };
-
   const handleSubmit = async (event) => {
     event.preventDefault();
     setLocationError(null);
     const lat = parseFloat(values.latitude);
     const lon = parseFloat(values.longitude);
-    const err = validateLocation(values.latitude, values.longitude);
+    const err = validateIrelandLocation(values.latitude, values.longitude);
     if (err) {
       setLocationError(err);
       return;
