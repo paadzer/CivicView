@@ -189,13 +189,17 @@ class CountyViewSet(viewsets.ReadOnlyModelViewSet):
         return super().list(request, *args, **kwargs)
 
     def _list_minimal_counties(self):
+        # One spatial join per request (GROUP BY). Correlated subqueries per row time out
+        # on large constituency/county sets and appear as CORS errors in the browser.
         from django.db import connection
         with connection.cursor() as cursor:
             cursor.execute("""
-                SELECT c.id, c.name,
-                    (SELECT COUNT(*) FROM civicview_report r
-                     WHERE ST_DWithin(r.geom::geography, c.boundary::geography, 2000)) AS report_count
+                SELECT c.id, c.name, COUNT(DISTINCT r.id) AS report_count
                 FROM civicview_county c
+                LEFT JOIN civicview_report r
+                    ON r.geom IS NOT NULL
+                    AND ST_DWithin(r.geom::geography, c.boundary::geography, 2000)
+                GROUP BY c.id, c.name
                 ORDER BY c.name
             """)
             rows = cursor.fetchall()
@@ -220,10 +224,12 @@ class DailConstituencyViewSet(viewsets.ReadOnlyModelViewSet):
         from django.db import connection
         with connection.cursor() as cursor:
             cursor.execute("""
-                SELECT d.id, d.name,
-                    (SELECT COUNT(*) FROM civicview_report r
-                     WHERE ST_DWithin(r.geom::geography, d.boundary::geography, 2000)) AS report_count
+                SELECT d.id, d.name, COUNT(DISTINCT r.id) AS report_count
                 FROM civicview_dailconstituency d
+                LEFT JOIN civicview_report r
+                    ON r.geom IS NOT NULL
+                    AND ST_DWithin(r.geom::geography, d.boundary::geography, 2000)
+                GROUP BY d.id, d.name
                 ORDER BY d.name
             """)
             rows = cursor.fetchall()
@@ -248,10 +254,12 @@ class LocalCouncilViewSet(viewsets.ReadOnlyModelViewSet):
         from django.db import connection
         with connection.cursor() as cursor:
             cursor.execute("""
-                SELECT l.id, l.name,
-                    (SELECT COUNT(*) FROM civicview_report r
-                     WHERE ST_DWithin(r.geom::geography, l.boundary::geography, 2000)) AS report_count
+                SELECT l.id, l.name, COUNT(DISTINCT r.id) AS report_count
                 FROM civicview_localcouncil l
+                LEFT JOIN civicview_report r
+                    ON r.geom IS NOT NULL
+                    AND ST_DWithin(r.geom::geography, l.boundary::geography, 2000)
+                GROUP BY l.id, l.name
                 ORDER BY l.name
             """)
             rows = cursor.fetchall()

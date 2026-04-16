@@ -3,9 +3,18 @@ import axios from "axios";
 
 import { getStoredToken, setAuthToken, getStoredUser } from "./lib/authStorage.js";
 
+const DEFAULT_API_BASE = "https://civicview-production.up.railway.app";
+
+/** VITE_* is baked in at build time on Vercel; trim and allow host-only values. */
+function normalizeApiBaseUrl(raw) {
+  const s = (raw ?? "").trim();
+  if (!s) return DEFAULT_API_BASE;
+  if (/^https?:\/\//i.test(s)) return s.replace(/\/+$/, "");
+  return `https://${s.replace(/\/+$/, "")}`;
+}
+
 // Create Axios instance with base URL for all API requests
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "https://civicview-production.up.railway.app";
+const API_BASE_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL);
 
 const api = axios.create({
   // Ensure exactly one trailing slash before "api/"
