@@ -4,6 +4,7 @@ from rest_framework.authtoken.views import obtain_auth_token
 from rest_framework.routers import DefaultRouter
 
 from .analytics_views import (
+    AnalyticsAdvancedView,
     AnalyticsDashboardView,
     AnalyticsSummaryView,
     CouncilComparisonView,
@@ -49,6 +50,7 @@ urlpatterns = router.urls + [
     path("notifications/", NotificationListView.as_view(), name="api_notifications_list"),
     path("notifications/<int:pk>/read/", NotificationMarkReadView.as_view(), name="api_notifications_mark_read"),
     path("analytics/summary/", AnalyticsSummaryView.as_view(), name="api_analytics_summary"),
+    path("analytics/advanced/", AnalyticsAdvancedView.as_view(), name="api_analytics_advanced"),
     path("analytics/dashboard/", AnalyticsDashboardView.as_view(), name="api_analytics_dashboard"),
     path("analytics/county-comparison/", CountyComparisonView.as_view(), name="api_county_comparison"),
     path("analytics/constituency-comparison/", ConstituencyComparisonView.as_view(), name="api_constituency_comparison"),

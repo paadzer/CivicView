@@ -115,7 +115,14 @@ class Command(BaseCommand):
                     continue
 
                 # Convert GeoJSON geometry to GEOSGeometry.
-                geometry = GEOSGeometry(json.dumps(feature["geometry"]))
+                # Force 2D coordinates so we can store into 2D PostGIS columns.
+                geometry_data = {
+                    **feature["geometry"],
+                    "coordinates": self._strip_z_from_coordinates(
+                        feature["geometry"].get("coordinates")
+                    ),
+                }
+                geometry = GEOSGeometry(json.dumps(geometry_data))
                 
                 # Determine source SRID
                 if source_srid:
@@ -205,7 +212,14 @@ class Command(BaseCommand):
                     continue
 
                 # Convert GeoJSON geometry to GEOSGeometry.
-                geometry = GEOSGeometry(json.dumps(feature["geometry"]))
+                # Force 2D coordinates so we can store into 2D PostGIS columns.
+                geometry_data = {
+                    **feature["geometry"],
+                    "coordinates": self._strip_z_from_coordinates(
+                        feature["geometry"].get("coordinates")
+                    ),
+                }
+                geometry = GEOSGeometry(json.dumps(geometry_data))
                 
                 # Determine source SRID
                 if source_srid:
@@ -299,7 +313,13 @@ class Command(BaseCommand):
                     )
                     continue
 
-                geometry = GEOSGeometry(json.dumps(feature["geometry"]))
+                geometry_data = {
+                    **feature["geometry"],
+                    "coordinates": self._strip_z_from_coordinates(
+                        feature["geometry"].get("coordinates")
+                    ),
+                }
+                geometry = GEOSGeometry(json.dumps(geometry_data))
 
                 if source_srid:
                     geometry.srid = source_srid
@@ -366,3 +386,14 @@ class Command(BaseCommand):
                 f"Local Councils: {imported} imported, {updated} updated, {errors} errors"
             )
         )
+
+    def _strip_z_from_coordinates(self, coords):
+        """
+        Recursively drop Z values from GeoJSON coordinate arrays.
+        Converts [x, y, z] -> [x, y] while preserving Polygon/MultiPolygon nesting.
+        """
+        if not isinstance(coords, (list, tuple)):
+            return coords
+        if len(coords) >= 2 and all(isinstance(v, (int, float)) for v in coords[:2]):
+            return [coords[0], coords[1]]
+        return [self._strip_z_from_coordinates(c) for c in coords]

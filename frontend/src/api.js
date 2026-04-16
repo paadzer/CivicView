@@ -56,6 +56,7 @@ export const markNotificationRead = (id) => api.patch(`notifications/${id}/read/
 
 // Analytics (council/admin only)
 export const fetchAnalyticsSummary = () => api.get("analytics/summary/");
+export const fetchAnalyticsAdvanced = () => api.get("analytics/advanced/");
 export const fetchAnalyticsDashboard = () => api.get("analytics/dashboard/");
 export const fetchCountyComparison = (countyNames) =>
   api.get("analytics/county-comparison/", {
