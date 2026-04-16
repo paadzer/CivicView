@@ -147,19 +147,46 @@ export default function Dashboard({ role, userId, onHotspotsRegenerated }) {
     let cancelled = false;
     setBoundariesLoading(true);
     setBoundariesError(null);
-    Promise.all([fetchCounties({ minimal: 1 }), fetchConstituencies({ minimal: 1 }), fetchCouncils({ minimal: 1 })])
-      .then(([countiesRes, constituenciesRes, councilsRes]) => {
-        if (!cancelled) {
-          setCounties(countiesRes.data || []);
-          setConstituencies(constituenciesRes.data || []);
-          setCouncils(councilsRes.data || []);
-          setBoundariesError(null);
+    Promise.allSettled([
+      fetchCounties({ minimal: 1 }),
+      fetchConstituencies({ minimal: 1 }),
+      fetchCouncils({ minimal: 1 }),
+    ])
+      .then((results) => {
+        if (cancelled) return;
+        const [rCounties, rConst, rCouncils] = results;
+
+        const countiesOk = rCounties.status === "fulfilled";
+        const constOk = rConst.status === "fulfilled";
+        const councilsOk = rCouncils.status === "fulfilled";
+
+        if (countiesOk) setCounties(rCounties.value.data || []);
+        else {
+          setCounties([]);
+          console.error("Counties request failed:", rCounties.reason);
         }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          console.error("Failed to load boundaries:", err);
-          setBoundariesError(err.response?.data?.error || "Failed to load boundaries. Make sure boundaries have been imported.");
+        if (constOk) setConstituencies(rConst.value.data || []);
+        else {
+          setConstituencies([]);
+          console.error("Constituencies request failed:", rConst.reason);
+        }
+        if (councilsOk) setCouncils(rCouncils.value.data || []);
+        else {
+          setCouncils([]);
+          console.warn("Councils request failed (optional layer):", rCouncils.reason);
+        }
+
+        if (!countiesOk && !constOk) {
+          const err = rCounties.reason?.response ? rCounties.reason : rConst.reason;
+          const d = err?.response?.data;
+          const detail =
+            (typeof d?.detail === "string" && d.detail) ||
+            (Array.isArray(d?.detail) && d.detail.map((x) => x?.string || x).join(" ")) ||
+            d?.error ||
+            "Failed to load boundaries. Check you are logged in with a staff (or above) role, and that the API is deployed.";
+          setBoundariesError(detail);
+        } else {
+          setBoundariesError(null);
         }
       })
       .finally(() => {

@@ -4,8 +4,13 @@ import os
 
 from django.contrib.gis.geos import GEOSGeometry, MultiPolygon
 from django.core.management.base import BaseCommand
+from shapely import wkt as shapely_wkt
+from shapely.ops import unary_union
 
 from civicview.models import County, DailConstituency, LocalCouncil
+
+# ~10–15 m in WGS84 at Irish lat — reduces vertices on ungeneralised LA boundaries.
+DEFAULT_COUNCIL_SIMPLIFY_DEGREES = 0.00011
 
 
 class Command(BaseCommand):
@@ -35,51 +40,70 @@ class Command(BaseCommand):
             action="store_true",
             help="Clear existing boundaries before importing",
         )
+        parser.add_argument(
+            "--only-councils",
+            action="store_true",
+            help="Only run local council import (skip counties and constituencies)",
+        )
+        parser.add_argument(
+            "--council-simplify",
+            type=float,
+            default=DEFAULT_COUNCIL_SIMPLIFY_DEGREES,
+            help=(
+                "Simplify council geometries in degrees (WGS84) before merge; "
+                f"default {DEFAULT_COUNCIL_SIMPLIFY_DEGREES} (~10–15m). Use 0 to disable."
+            ),
+        )
 
     def handle(self, *args, **options):
         counties_path = options["counties"]
         constituencies_path = options["constituencies"]
         councils_path = options["councils"]
         clear_existing = options["clear"]
+        only_councils = options["only_councils"]
+        council_simplify = options["council_simplify"]
 
         # Clear existing data if requested
         if clear_existing:
             self.stdout.write("Clearing existing boundaries...")
-            County.objects.all().delete()
-            DailConstituency.objects.all().delete()
+            if not only_councils:
+                County.objects.all().delete()
+                DailConstituency.objects.all().delete()
             LocalCouncil.objects.all().delete()
             self.stdout.write(self.style.SUCCESS("Cleared existing boundaries"))
 
         # Import counties
-        if os.path.exists(counties_path):
-            self.stdout.write(f"Importing counties from {counties_path}...")
-            self._import_counties(counties_path)
-        else:
-            self.stdout.write(
-                self.style.WARNING(f"Counties file not found: {counties_path}")
-            )
+        if not only_councils:
+            if os.path.exists(counties_path):
+                self.stdout.write(f"Importing counties from {counties_path}...")
+                self._import_counties(counties_path)
+            else:
+                self.stdout.write(
+                    self.style.WARNING(f"Counties file not found: {counties_path}")
+                )
 
         # Import local councils
         if os.path.exists(councils_path):
             self.stdout.write(f"Importing local councils from {councils_path}...")
-            self._import_councils(councils_path)
+            self._import_councils(councils_path, simplify_degrees=council_simplify)
         else:
             self.stdout.write(
                 self.style.WARNING(f"Councils file not found: {councils_path}")
             )
 
         # Import constituencies
-        if os.path.exists(constituencies_path):
-            self.stdout.write(
-                f"Importing Dáil constituencies from {constituencies_path}..."
-            )
-            self._import_constituencies(constituencies_path)
-        else:
-            self.stdout.write(
-                self.style.WARNING(
-                    f"Constituencies file not found: {constituencies_path}"
+        if not only_councils:
+            if os.path.exists(constituencies_path):
+                self.stdout.write(
+                    f"Importing Dáil constituencies from {constituencies_path}..."
                 )
-            )
+                self._import_constituencies(constituencies_path)
+            else:
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"Constituencies file not found: {constituencies_path}"
+                    )
+                )
 
     def _import_counties(self, file_path):
         """Import county boundaries from GeoJSON file."""
@@ -274,10 +298,15 @@ class Command(BaseCommand):
             )
         )
 
-    def _import_councils(self, file_path):
+    def _import_councils(self, file_path, simplify_degrees=DEFAULT_COUNCIL_SIMPLIFY_DEGREES):
         """Import local council boundaries from GeoJSON file."""
+        self.stdout.write("  Reading GeoJSON (large ungeneralised files can take 1–3 minutes)...")
+        self.stdout.flush()
         with open(file_path, "r", encoding="utf-8") as f:
             geojson_data = json.load(f)
+        features = geojson_data.get("features", [])
+        self.stdout.write(f"  Loaded {len(features)} features; processing…")
+        self.stdout.flush()
 
         source_srid = None
         if "crs" in geojson_data:
@@ -292,8 +321,11 @@ class Command(BaseCommand):
         updated = 0
         errors = 0
         council_parts = {}
-
-        for feature in geojson_data.get("features", []):
+        n_features = len(features)
+        for feat_idx, feature in enumerate(features):
+            if feat_idx and feat_idx % 500 == 0:
+                self.stdout.write(f"  … {feat_idx}/{n_features} features read")
+                self.stdout.flush()
             properties = feature.get("properties", {})
             try:
                 # Support common field names used in local authority datasets.
@@ -341,6 +373,9 @@ class Command(BaseCommand):
                 if geometry.srid != 4326:
                     geometry.transform(4326)
 
+                if simplify_degrees and simplify_degrees > 0:
+                    geometry = geometry.simplify(simplify_degrees, preserve_topology=True)
+
                 # Collect polygon parts for later dissolve/merge by council.
                 council_parts.setdefault(council_name, []).append(geometry)
 
@@ -352,20 +387,38 @@ class Command(BaseCommand):
                     )
                 )
 
-        # Dissolve all parts per council into one MultiPolygon boundary.
-        for council_name, parts in council_parts.items():
+        # One unary_union per council (much faster than sequential GEOS union on many polygons).
+        self.stdout.write(f"  Merging parts for {len(council_parts)} councils…")
+        self.stdout.flush()
+        for idx, (council_name, parts) in enumerate(council_parts.items()):
             try:
-                dissolved = parts[0]
-                for part in parts[1:]:
-                    dissolved = dissolved.union(part)
+                self.stdout.write(f"  [{idx + 1}/{len(council_parts)}] {council_name} ({len(parts)} parts)")
+                self.stdout.flush()
+                shapely_parts = [shapely_wkt.loads(p.wkt) for p in parts]
+                merged = unary_union(shapely_parts)
+                if merged.is_empty:
+                    raise ValueError("Empty merge result")
 
-                if dissolved.geom_type == "Polygon":
-                    dissolved = MultiPolygon(dissolved)
-                elif dissolved.geom_type != "MultiPolygon":
-                    polygons = [g for g in getattr(dissolved, "geoms", []) if g.geom_type == "Polygon"]
-                    if not polygons:
-                        raise ValueError(f"Unsupported dissolved geometry type: {dissolved.geom_type}")
-                    dissolved = MultiPolygon(*polygons)
+                if merged.geom_type == "Polygon":
+                    dissolved = MultiPolygon(GEOSGeometry(merged.wkt, srid=4326))
+                elif merged.geom_type == "MultiPolygon":
+                    dissolved = GEOSGeometry(merged.wkt, srid=4326)
+                elif merged.geom_type == "GeometryCollection":
+                    polys = [
+                        g for g in merged.geoms
+                        if g.geom_type in ("Polygon", "MultiPolygon")
+                    ]
+                    if not polys:
+                        raise ValueError("No polygon geometry in collection")
+                    merged2 = unary_union(polys)
+                    if merged2.geom_type == "Polygon":
+                        dissolved = MultiPolygon(GEOSGeometry(merged2.wkt, srid=4326))
+                    elif merged2.geom_type == "MultiPolygon":
+                        dissolved = GEOSGeometry(merged2.wkt, srid=4326)
+                    else:
+                        raise ValueError(f"After collection filter: {merged2.geom_type}")
+                else:
+                    raise ValueError(f"Unsupported merged type: {merged.geom_type}")
 
                 _, created = LocalCouncil.objects.update_or_create(
                     name=council_name,
