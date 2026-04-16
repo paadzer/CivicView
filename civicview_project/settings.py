@@ -219,6 +219,12 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:5173",
     "https://civic-view.vercel.app",
+] + env.list("CORS_ALLOWED_ORIGINS_EXTRA", default=[])
+
+# Vercel preview deployments use hosts like civic-view-<hash>-<team>.vercel.app.
+# Production https://civic-view.vercel.app is listed explicitly above; this covers previews.
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://civic-view(-[\w.-]+)?\.vercel\.app$",
 ]
 
 # Trusted origins for CSRF-protected requests (e.g. admin login in production)

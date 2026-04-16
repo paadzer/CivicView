@@ -25,6 +25,54 @@ import ReportDetailCard from "./ReportDetailCard";
 const COLORS = ["#2563eb", "#ea580c", "#059669", "#7c3aed", "#dc2626", "#ca8a04", "#0891b2", "#db2777", "#4b5563", "#65a30d"];
 const ALLOWED_TABS = new Set(["overview", "management", "geographic", "lab", "export"]);
 
+/** When both county and constituency list requests fail, explain likely causes (auth/CORS/network). */
+function formatDualBoundaryFailure(rCounties, rConst) {
+  const firstReason =
+    rCounties.status === "rejected"
+      ? rCounties.reason
+      : rConst.status === "rejected"
+        ? rConst.reason
+        : null;
+  const withResponse =
+    (rCounties.status === "rejected" && rCounties.reason?.response && rCounties.reason) ||
+    (rConst.status === "rejected" && rConst.reason?.response && rConst.reason) ||
+    firstReason;
+  const e = withResponse;
+  if (!e) return "Failed to load boundaries.";
+
+  const status = e.response?.status;
+  const d = e.response?.data;
+  const drfDetail =
+    (typeof d?.detail === "string" && d.detail) ||
+    (Array.isArray(d?.detail) &&
+      d.detail.map((x) => (typeof x === "string" ? x : x?.string || "")).filter(Boolean).join(" ")) ||
+    (d?.error && String(d.error));
+
+  if (status === 401) {
+    return "Boundaries could not be loaded because you are not authenticated. Log in again.";
+  }
+  if (status === 403) {
+    return (
+      drfDetail ||
+      "Your account does not have permission to load boundaries (council, staff, manager, or admin required)."
+    );
+  }
+  if (!e.response) {
+    const msg = (e.message || "").toLowerCase();
+    if (msg.includes("network") || e.code === "ERR_NETWORK") {
+      return (
+        "Could not reach the API. Check that VITE_API_BASE_URL on Vercel points at your Railway app, " +
+        "and open the browser devtools Network tab for blocked /api/counties/ or /api/constituencies/ requests (CORS)."
+      );
+    }
+    return e.message || "Could not reach the API.";
+  }
+  if (status >= 500) {
+    return drfDetail || "The boundaries service returned a server error. Try again later.";
+  }
+  return drfDetail || `Failed to load boundaries (HTTP ${status}).`;
+}
+
 // Priority bands for traffic-light: high >= 20, medium >= 10, low < 10 (or null/undefined)
 function getPriorityBand(score) {
   if (score == null || typeof score !== "number") return null;
@@ -177,14 +225,7 @@ export default function Dashboard({ role, userId, onHotspotsRegenerated }) {
         }
 
         if (!countiesOk && !constOk) {
-          const err = rCounties.reason?.response ? rCounties.reason : rConst.reason;
-          const d = err?.response?.data;
-          const detail =
-            (typeof d?.detail === "string" && d.detail) ||
-            (Array.isArray(d?.detail) && d.detail.map((x) => x?.string || x).join(" ")) ||
-            d?.error ||
-            "Failed to load boundaries. Check you are logged in with a staff (or above) role, and that the API is deployed.";
-          setBoundariesError(detail);
+          setBoundariesError(formatDualBoundaryFailure(rCounties, rConst));
         } else {
           setBoundariesError(null);
         }
@@ -1304,9 +1345,6 @@ export default function Dashboard({ role, userId, onHotspotsRegenerated }) {
               }}>
                 <p style={{ margin: 0, color: "#dc2626", fontSize: "0.875rem" }}>
                   {boundariesError}
-                </p>
-                <p style={{ margin: "0.5rem 0 0 0", color: "#991b1b", fontSize: "0.8rem" }}>
-                  To import boundaries, run: <code style={{ background: "#fecaca", padding: "0.2rem 0.4rem", borderRadius: "3px" }}>python manage.py import_boundaries</code>
                 </p>
               </div>
             )}
