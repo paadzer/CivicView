@@ -1,6 +1,6 @@
 # Civic View
 
-Civic View is a GeoDjango-powered civic issue reporting platform that exposes a REST API, runs DBSCAN-based hotspot clustering with Celery, and optionally visualises data through a lightweight React + Leaflet frontend. It matches the interim smart-city report goals: citizen reporting UI, automated DBSCAN hotspot detection, spatial storage in PostGIS, and map-based insight sharing.
+Civic View is a GeoDjango-powered civic issue reporting platform for Ireland. It exposes a REST API, runs DBSCAN-based hotspot clustering with Celery, provides geographic analytics (county, Dáil constituency, and local council), and includes a React + Leaflet frontend with dashboard and advanced analytics routes.
 
 ## Architecture Overview
 
@@ -11,11 +11,12 @@ Civic View is a GeoDjango-powered civic issue reporting platform that exposes a 
 
 ### Features
 
-- **Authentication & roles**: Token auth; register/login; roles (citizen, moderator, admin) for permissions; only authenticated users can create reports; only owner or moderator/admin can update or delete.
-- **Category filters**: Filter reports by category in the API (`?category=...`) and in the frontend dropdown.
-- **Location validation**: Reports must be within Ireland (lat 51.4–55.4, lon -11 to -5); validated on backend and frontend.
-- **Auto-refresh hotspots**: Creating a report triggers Celery task `generate_hotspots` so hotspots update automatically.
-- **Map UI**: Layer toggles (show/hide reports and hotspots); category shown in report popups.
+- **6-tier role model**: Token auth with register/login and role-based permissions: citizen, moderator, staff, council, manager, admin.
+- **Reporting workflow**: Create reports with geolocation, status workflow (open/in_progress/resolved/dismissed), assignment, validation flag, and image uploads.
+- **Spatial analytics boundaries**: County, Dáil constituency, and local council entities with comparison and drill-down APIs.
+- **Boundary import pipeline**: `import_boundaries` command imports/updates GeoJSON boundaries into PostGIS.
+- **Hotspot processing**: DBSCAN clustering via Celery task (`generate_hotspots`) with polygon simplification and nearby-border merge logic.
+- **Dashboards**: Management dashboard plus dedicated advanced analytics route (`/advanced-analytics`) backed by `/api/analytics/advanced/`.
 
 ## Prerequisites
 
@@ -71,20 +72,26 @@ git clone <repo_url> civicview
 cd civicview
 ```
 
-### Step 2: Create Conda Environment
+### Step 2: Install Python Dependencies
 
+Use one of the options below.
+
+**Option A (recommended, pip/venv):**
 ```bash
-conda env create -f environment.yml
-conda activate civicview
+python -m venv .venv
+# Windows:
+.venv\Scripts\activate
+# Linux/macOS:
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-This will install all required dependencies including:
-- Django and Django REST Framework
-- GeoDjango dependencies (GDAL, GEOS, PROJ)
-- PostgreSQL client (psycopg2)
-- Celery and Redis client
-- Scikit-learn for DBSCAN clustering
-- Shapely for geometric operations
+**Option B (Conda):**
+```bash
+conda env create -f environment-local.yml
+conda activate civicview
+pip install -r requirements.txt
+```
 
 ### Step 3: Create PostgreSQL Database
 
@@ -142,8 +149,9 @@ REDIS_URL=redis://localhost:6379/0
 CELERY_BROKER_URL=redis://localhost:6379/0
 CELERY_RESULT_BACKEND=redis://localhost:6379/0
 
-# CORS Configuration (React Frontend)
-CORS_ALLOWED_ORIGINS=http://127.0.0.1:3000,http://localhost:3000
+# CORS Configuration (optional extras)
+# Local defaults already include localhost:3000 and localhost:5173 in settings.py
+CORS_ALLOWED_ORIGINS_EXTRA=
 ```
 
 **Important:** Replace the placeholder values:
@@ -283,7 +291,7 @@ npm install
 npm run dev
 ```
 
-The frontend will start at `http://localhost:3000` (or the next available port).
+The frontend will start at `http://localhost:5173` (or the next available Vite port).
 
 **Important:** Make sure the Django backend is running on `http://127.0.0.1:8000/` before using the frontend.
 
@@ -323,8 +331,8 @@ Request body:
   "title": "Streetlight out",
   "description": "No lighting on corner",
   "category": "Lighting",
-  "latitude": 51.5,
-  "longitude": -0.12
+  "latitude": 53.3498,
+  "longitude": -6.2603
 }
 ```
 
@@ -337,7 +345,7 @@ Response:
   "category": "Lighting",
   "geom": {
     "type": "Point",
-    "coordinates": [-0.12, 51.5]
+    "coordinates": [-6.2603, 53.3498]
   },
   "created_at": "2024-01-15T10:30:00Z"
 }
@@ -352,6 +360,23 @@ Returns a list of all reports, ordered by most recent first.
 `GET /hotspots/`
 
 Returns a list of all detected hotspot clusters as polygons.
+
+### Additional high-use endpoints
+
+- `GET /auth/me/`
+- `GET /auth/assignable-users/`
+- `GET /notifications/`
+- `PATCH /notifications/{id}/read/`
+- `GET /counties/?minimal=1`
+- `GET /constituencies/?minimal=1`
+- `GET /councils/?minimal=1`
+- `GET /analytics/summary/`
+- `GET /analytics/dashboard/`
+- `GET /analytics/advanced/`
+- `GET /analytics/county-comparison/?counties=...`
+- `GET /analytics/constituency-comparison/?constituencies=...`
+- `GET /analytics/council-comparison/?councils=...`
+- `GET /analytics/geographic-reports/?type=county|constituency|council&name=...`
 
 ## Adding more data and hotspots
 
@@ -383,6 +408,27 @@ To get more reports on the map and more hotspot clusters:
 
 4. **Submitting via the app**: Use the report form on the home page (logged in) to add real reports; creating a report triggers hotspot regeneration in the background if Celery is running.
 
+## Importing Administrative Boundaries
+
+Boundary analytics rely on imported GeoJSON boundary files (county, Dáil constituency, and local council).
+
+```bash
+python manage.py import_boundaries
+```
+
+Useful options:
+
+```bash
+# Re-import councils only (faster when iterating on council shapes)
+python manage.py import_boundaries --only-councils
+
+# Provide custom files
+python manage.py import_boundaries \
+  --counties "civicview/data/boundaries/counties_ireland_osi.geojson" \
+  --constituencies "civicview/data/boundaries/dail_constituencies_2023.geojson" \
+  --councils "civicview/data/boundaries/local_councils_ireland.geojson"
+```
+
 ## Hotspot Generation
 
 Hotspots are generated using DBSCAN clustering algorithm to identify areas with multiple reports.
@@ -397,8 +443,9 @@ python manage.py generate_hotspots
 
 This command:
 - Queries all existing reports from the database
-- Applies DBSCAN clustering (eps=0.01, min_samples=2)
-- Creates convex hull polygons for each cluster
+- Applies DBSCAN clustering in meters
+- Buffers and simplifies resulting polygons
+- Merges nearby cluster borders for cleaner hotspot outlines
 - Stores hotspots in the database
 
 **Note:** This replaces all existing hotspots. Run this after adding new reports to update hotspot detection.
@@ -417,8 +464,11 @@ If you want to use Celery for async processing:
 ### DBSCAN Parameters
 
 The clustering uses these default parameters (defined in `civicview/tasks.py`):
-- **eps=0.01**: Maximum distance between points to be in the same cluster (approximately 1km)
-- **min_samples=2**: Minimum number of reports required to form a cluster
+- **eps=250m** (`EPS_METERS=250`)
+- **min_samples=5** (`MIN_SAMPLES=5`)
+- **buffer=120m** (`BUFFER_METERS=120`)
+- **simplify tolerance=15m** (`SIMPLIFY_TOLERANCE_METERS=15`)
+- **near-border merge threshold=30% of buffer radius** (`MERGE_THRESHOLD_RATIO=0.30`)
 
 To adjust these parameters, edit the `generate_hotspots` function in `civicview/tasks.py`.
 
@@ -538,9 +588,9 @@ Using Django Admin:
 
 1. Ensure backend is running on `http://127.0.0.1:8000/`
 2. Start frontend: `cd frontend && npm run dev`
-3. Open browser to the frontend URL (typically `http://localhost:3000`)
+3. Open browser to the frontend URL (typically `http://localhost:5173`)
 4. You should see:
-   - A map centered on coordinates (default: London)
+   - A map centered on Ireland by default
    - A report submission form
    - Existing reports as markers (if any)
    - Existing hotspots as polygons (if any)
@@ -610,7 +660,7 @@ Using Django Admin:
 
 **Solutions:**
 - Ensure environment is activated: `conda activate civicview`
-- Recreate environment: `conda env remove -n civicview && conda env create -f environment.yml`
+- Recreate environment (Conda): `conda env remove -n civicview && conda env create -f environment-local.yml`
 - Update packages: `conda update --all`
 
 ### Getting Help
@@ -629,12 +679,14 @@ CivicView/
 ├── civicview/                  # Main Django app
 │   ├── management/
 │   │   └── commands/
-│   │       └── generate_hotspots.py  # CLI command for hotspot generation
+│   │       ├── generate_hotspots.py  # CLI command for hotspot generation
+│   │       └── import_boundaries.py  # GeoJSON boundary importer
 │   ├── migrations/             # Database migrations
-│   ├── models.py              # Report and Hotspot models
+│   ├── models.py              # Reports, hotspots, boundaries, roles, notifications
 │   ├── serializers.py         # DRF serializers
 │   ├── tasks.py               # Celery tasks (DBSCAN clustering)
-│   ├── views.py               # API viewsets
+│   ├── views.py               # Report/hotspot/boundary API viewsets
+│   ├── analytics_views.py     # Dashboard and advanced analytics endpoints
 │   └── urls.py                # URL routing
 ├── civicview_project/         # Django project settings
 │   ├── settings.py            # Main configuration (edit GDAL/GEOS paths here on Windows)
@@ -644,19 +696,22 @@ CivicView/
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── MapView.jsx    # Leaflet map component
-│   │   │   └── ReportForm.jsx # Report submission form
+│   │   │   ├── ReportForm.jsx # Report submission form
+│   │   │   ├── Dashboard.jsx  # Management dashboard
+│   │   │   └── AdvancedAnalyticsWrapper.jsx
 │   │   ├── App.jsx            # Main React component
 │   │   └── api.js             # API client
 │   └── package.json
 ├── .env                       # Environment variables (create from .env.example)
-├── environment.yml            # Conda environment specification
+├── environment-local.yml      # Optional local Conda environment spec
+├── requirements.txt           # Python dependencies
 ├── docker-compose.yml         # Docker Compose configuration
 └── README.md                  # This file
 ```
 
 ## Quick Start Checklist
 
-- [ ] Conda environment created and activated
+- [ ] Python environment created and dependencies installed (`pip install -r requirements.txt`)
 - [ ] PostgreSQL with PostGIS installed and database created
 - [ ] Redis server running
 - [ ] `.env` file created and configured
@@ -667,6 +722,7 @@ CivicView/
 - [ ] Celery worker running (`celery -A civicview_project worker -l info`)
 - [ ] Frontend dependencies installed (`cd frontend && npm install`)
 - [ ] Frontend server running (`npm run dev`)
+- [ ] Boundaries imported (`python manage.py import_boundaries`)
 - [ ] Tested report creation
 - [ ] Tested hotspot generation
 
