@@ -509,6 +509,338 @@ export default function AdvancedAnalyticsWrapper({ role }) {
         </Link>
       </div>
 
+      <div style={{ ...cardStyle, marginBottom: "2rem" }}>
+        <h2 style={sectionTitle}>Predictive risk (7/14 days)</h2>
+        <p style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "-0.5rem", marginBottom: "0.75rem" }}>
+          Heuristic spatiotemporal forecast by local council. Scores combine local trend, weekly seasonality, and category mix.
+        </p>
+        <div style={{ overflowX: "auto", maxHeight: 330, overflowY: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
+            <thead>
+              <tr style={{ background: "#e2e8f0", textAlign: "left" }}>
+                <th style={{ padding: "0.55rem" }}>Area</th>
+                <th style={{ padding: "0.55rem" }}>Risk score</th>
+                <th style={{ padding: "0.55rem" }}>Predicted (7d)</th>
+                <th style={{ padding: "0.55rem" }}>Predicted (14d)</th>
+                <th style={{ padding: "0.55rem" }}>Confidence</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(advanced?.predictive_risk?.top_risk_areas ?? []).slice(0, 15).map((row) => (
+                <tr key={row.name} style={{ borderTop: "1px solid #e5e7eb" }}>
+                  <td style={{ padding: "0.5rem", fontWeight: 600 }}>{row.name}</td>
+                  <td style={{ padding: "0.5rem" }}>{row.risk_score}</td>
+                  <td style={{ padding: "0.5rem" }}>{row.predicted_reports_7d}</td>
+                  <td style={{ padding: "0.5rem" }}>{row.predicted_reports_14d}</td>
+                  <td style={{ padding: "0.5rem" }}>{((row.confidence ?? 0) * 100).toFixed(0)}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style={{ ...cardStyle, marginBottom: "2rem" }}>
+        <h2 style={sectionTitle}>Priority optimization (explainable)</h2>
+        <p style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "-0.5rem", marginBottom: "0.75rem" }}>
+          Top open/in-progress reports ranked by a transparent score with factor contributions.
+        </p>
+        <div style={{ maxHeight: 350, overflow: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <thead>
+              <tr style={{ background: "#e2e8f0", textAlign: "left" }}>
+                <th style={{ padding: "0.5rem" }}>Report</th>
+                <th style={{ padding: "0.5rem" }}>Category</th>
+                <th style={{ padding: "0.5rem" }}>Score</th>
+                <th style={{ padding: "0.5rem" }}>Age (days)</th>
+                <th style={{ padding: "0.5rem" }}>Cluster</th>
+                <th style={{ padding: "0.5rem" }}>Repeat incidents</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(advanced?.priority_optimization?.top_priority_reports ?? []).slice(0, 25).map((r) => (
+                <tr key={r.report_id} style={{ borderTop: "1px solid #e5e7eb" }}>
+                  <td style={{ padding: "0.45rem", fontWeight: 600 }}>{r.title}</td>
+                  <td style={{ padding: "0.45rem" }}>{r.category}</td>
+                  <td style={{ padding: "0.45rem" }}>{r.priority_score}</td>
+                  <td style={{ padding: "0.45rem" }}>{r.score_breakdown?.age_days ?? "—"}</td>
+                  <td style={{ padding: "0.45rem" }}>{r.score_breakdown?.cluster_intensity ?? "—"}</td>
+                  <td style={{ padding: "0.45rem" }}>{r.score_breakdown?.repeat_incidents ?? 0}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: "1.5rem", marginBottom: "2rem" }}>
+        <div style={cardStyle}>
+          <h2 style={sectionTitle}>SLA / survival checkpoints</h2>
+          <p style={{ fontSize: "0.84rem", color: "#64748b", marginTop: "-0.5rem", marginBottom: "0.75rem" }}>
+            Probability a report remains unresolved after key day thresholds.
+          </p>
+          <div style={{ display: "flex", gap: "0.65rem", flexWrap: "wrap", marginBottom: "0.75rem" }}>
+            {(advanced?.sla_survival?.overall?.checkpoints ?? []).map((cp) => (
+              <div key={cp.day} style={{ background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: 8, padding: "0.5rem 0.75rem", minWidth: 86 }}>
+                <div style={{ fontSize: 11, color: "#4338ca", fontWeight: 700 }}>Day {cp.day}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#1e1b4b" }}>{(cp.probability_unresolved * 100).toFixed(1)}%</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ maxHeight: 200, overflow: "auto", fontSize: 12 }}>
+            {(advanced?.sla_survival?.by_category ?? []).slice(0, 6).map((c) => (
+              <div key={c.category} style={{ padding: "0.35rem 0", borderTop: "1px solid #e2e8f0" }}>
+                <strong>{c.category}</strong> · median: {c.median_days ?? "—"} days
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={cardStyle}>
+          <h2 style={sectionTitle}>Anomaly detection alerts</h2>
+          <p style={{ fontSize: "0.84rem", color: "#64748b", marginTop: "-0.5rem", marginBottom: "0.75rem" }}>
+            EWMA + z-score based spike signals for intake changes.
+          </p>
+          {(advanced?.anomaly_detection?.alerts ?? []).length === 0 ? (
+            <p style={{ margin: 0, color: "#475569", fontSize: 13 }}>No active alerts.</p>
+          ) : (
+            <div style={{ maxHeight: 230, overflow: "auto" }}>
+              {(advanced?.anomaly_detection?.alerts ?? []).map((a, idx) => (
+                <div key={idx} style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: "0.55rem 0.65rem", marginBottom: "0.45rem", background: a.level === "high" ? "#fff1f2" : "#fffbeb" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#334155", textTransform: "uppercase" }}>{a.level} · {a.type}</div>
+                  <div style={{ fontSize: 12.5, color: "#0f172a" }}>{a.message}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: "1.5rem", marginBottom: "2rem" }}>
+        <div style={cardStyle}>
+          <h2 style={sectionTitle}>Category co-occurrence network</h2>
+          <p style={{ fontSize: "0.84rem", color: "#64748b", marginTop: "-0.5rem", marginBottom: "0.75rem" }}>
+            Categories that appear together within hotspot polygons.
+          </p>
+          <div style={{ maxHeight: 230, overflow: "auto", fontSize: 12.5 }}>
+            {(advanced?.category_network?.communities ?? []).slice(0, 10).map((group, i) => (
+              <div key={i} style={{ borderTop: "1px solid #e2e8f0", padding: "0.45rem 0" }}>
+                <strong>Community {i + 1}:</strong> {group.join(", ")}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={cardStyle}>
+          <h2 style={sectionTitle}>Spatial autocorrelation</h2>
+          <p style={{ fontSize: "0.84rem", color: "#64748b", marginTop: "-0.5rem", marginBottom: "0.75rem" }}>
+            Moran&apos;s I indicates whether incidents are spatially clustered beyond random dispersion.
+          </p>
+          {advanced?.spatial_autocorrelation?.error ? (
+            <p style={{ margin: 0, color: "#dc2626", fontSize: 13 }}>{advanced.spatial_autocorrelation.error}</p>
+          ) : (
+            <>
+              <p style={{ margin: "0 0 0.4rem 0", fontSize: 13, color: "#0f172a" }}>
+                Moran&apos;s I: <strong>{advanced?.spatial_autocorrelation?.moran_i ?? "—"}</strong>
+                {" · "}
+                p-value: <strong>{advanced?.spatial_autocorrelation?.p_value ?? "—"}</strong>
+              </p>
+              <div style={{ maxHeight: 180, overflow: "auto", fontSize: 12 }}>
+                {(advanced?.spatial_autocorrelation?.top_areas ?? []).map((r) => (
+                  <div key={r.name} style={{ borderTop: "1px solid #e2e8f0", padding: "0.35rem 0" }}>
+                    {r.name}: <strong>{r.count}</strong>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div style={{ ...cardStyle, marginBottom: "2rem" }}>
+        <h2 style={sectionTitle}>Counterfactual policy comparison</h2>
+        <p style={{ fontSize: "0.84rem", color: "#64748b", marginTop: "-0.5rem", marginBottom: "0.75rem" }}>
+          Simulated 14-day backlog selection under oldest-first vs priority-score policy.
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "0.75rem" }}>
+          <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: 8, padding: "0.65rem 0.8rem" }}>
+            <div style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>Oldest-first</div>
+            <div style={{ fontSize: 14, color: "#0f172a" }}>
+              Selected: {advanced?.counterfactual_comparison?.policy_a_oldest_first?.selected_reports ?? 0}
+            </div>
+            <div style={{ fontSize: 12, color: "#475569" }}>
+              Avg age: {advanced?.counterfactual_comparison?.policy_a_oldest_first?.average_age_days_of_selected ?? "—"} days
+            </div>
+          </div>
+          <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: 8, padding: "0.65rem 0.8rem" }}>
+            <div style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>Priority-score</div>
+            <div style={{ fontSize: 14, color: "#0f172a" }}>
+              Selected: {advanced?.counterfactual_comparison?.policy_b_priority_score?.selected_reports ?? 0}
+            </div>
+            <div style={{ fontSize: 12, color: "#475569" }}>
+              Avg age: {advanced?.counterfactual_comparison?.policy_b_priority_score?.average_age_days_of_selected ?? "—"} days
+            </div>
+          </div>
+          <div style={{ background: "#ecfeff", border: "1px solid #a5f3fc", borderRadius: 8, padding: "0.65rem 0.8rem" }}>
+            <div style={{ fontSize: 12, color: "#0e7490", fontWeight: 600 }}>Delta (B - A)</div>
+            <div style={{ fontSize: 16, color: "#0f172a", fontWeight: 700 }}>
+              {advanced?.counterfactual_comparison?.estimated_delta_days ?? "—"} days
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ ...cardStyle, marginBottom: "2rem" }}>
+        <h2 style={sectionTitle}>Drill-down funnel snapshot</h2>
+        <p style={{ fontSize: "0.84rem", color: "#64748b", marginTop: "-0.5rem", marginBottom: "0.75rem" }}>
+          National to area-level progression. Full report-level details are available from Geographic drill-down above.
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "180px 1fr", gap: "1rem", alignItems: "start" }}>
+          <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: "0.6rem 0.75rem", background: "white" }}>
+            <div style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>National total</div>
+            <div style={{ fontSize: 22, color: "#0f172a", fontWeight: 700 }}>{advanced?.drilldown_funnel?.national_total ?? 0}</div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: "0.75rem" }}>
+            <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: "0.6rem 0.75rem", background: "white" }}>
+              <div style={{ fontSize: 12, color: "#475569", fontWeight: 700, marginBottom: "0.35rem" }}>Top councils</div>
+              {(advanced?.drilldown_funnel?.top_councils ?? []).slice(0, 6).map((r) => (
+                <div key={r.name} style={{ fontSize: 12.5, padding: "0.2rem 0", borderTop: "1px solid #f1f5f9" }}>
+                  {r.name} <strong style={{ float: "right" }}>{r.count}</strong>
+                </div>
+              ))}
+            </div>
+            <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: "0.6rem 0.75rem", background: "white" }}>
+              <div style={{ fontSize: 12, color: "#475569", fontWeight: 700, marginBottom: "0.35rem" }}>Top constituencies</div>
+              {(advanced?.drilldown_funnel?.top_constituencies ?? []).length === 0 ? (
+                <div style={{ fontSize: 12, color: "#64748b" }}>Available via pre-aggregated mode (disabled for performance).</div>
+              ) : (
+                (advanced?.drilldown_funnel?.top_constituencies ?? []).slice(0, 6).map((r) => (
+                  <div key={r.name} style={{ fontSize: 12.5, padding: "0.2rem 0", borderTop: "1px solid #f1f5f9" }}>
+                    {r.name} <strong style={{ float: "right" }}>{r.count}</strong>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: "1.5rem", marginBottom: "2rem" }}>
+        <div style={cardStyle}>
+          <h2 style={sectionTitle}>Assignee rebalancing suggestions</h2>
+          <div style={{ maxHeight: 220, overflow: "auto", fontSize: 12.5 }}>
+            {(advanced?.assignee_rebalancing?.recommendations ?? []).length === 0 ? (
+              <p style={{ margin: 0, color: "#475569" }}>No strong imbalance recommendation right now.</p>
+            ) : (
+              (advanced?.assignee_rebalancing?.recommendations ?? []).map((r, i) => (
+                <div key={i} style={{ borderTop: "1px solid #e2e8f0", padding: "0.45rem 0" }}>
+                  Move ~{r.suggested_reassignments} reports from <strong>{r.from}</strong> to <strong>{r.to}</strong>.
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+        <div style={cardStyle}>
+          <h2 style={sectionTitle}>Reporter cohort quality trend</h2>
+          <div style={{ maxHeight: 220, overflow: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <thead>
+                <tr style={{ background: "#e2e8f0", textAlign: "left" }}>
+                  <th style={{ padding: "0.45rem" }}>Cohort</th>
+                  <th style={{ padding: "0.45rem" }}>Users</th>
+                  <th style={{ padding: "0.45rem" }}>Reports</th>
+                  <th style={{ padding: "0.45rem" }}>Res %</th>
+                  <th style={{ padding: "0.45rem" }}>Inv %</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(advanced?.reporter_cohorts ?? []).map((r) => (
+                  <tr key={r.cohort_month} style={{ borderTop: "1px solid #e5e7eb" }}>
+                    <td style={{ padding: "0.4rem" }}>{r.cohort_month}</td>
+                    <td style={{ padding: "0.4rem" }}>{r.users}</td>
+                    <td style={{ padding: "0.4rem" }}>{r.total_reports}</td>
+                    <td style={{ padding: "0.4rem" }}>{(r.resolution_rate * 100).toFixed(0)}%</td>
+                    <td style={{ padding: "0.4rem" }}>{(r.invalid_rate * 100).toFixed(0)}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ ...cardStyle, marginBottom: "2rem" }}>
+        <h2 style={sectionTitle}>Weekly confidence bands</h2>
+        <p style={{ fontSize: "0.84rem", color: "#64748b", marginTop: "-0.5rem", marginBottom: "0.75rem" }}>
+          Poisson confidence intervals around weekly report volume to avoid over-interpreting minor fluctuations.
+        </p>
+        <div style={{ height: 260 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={advanced?.reports_per_week_ci ?? []} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="week_start" tick={{ fontSize: 10 }} />
+              <YAxis tick={{ fontSize: 11 }} />
+              <Tooltip />
+              <Legend />
+              <Line type="monotone" dataKey="count" stroke="#0ea5e9" strokeWidth={2} dot={false} name="Observed" />
+              <Line type="monotone" dataKey="ci_low" stroke="#94a3b8" strokeDasharray="4 3" dot={false} name="CI low" />
+              <Line type="monotone" dataKey="ci_high" stroke="#94a3b8" strokeDasharray="4 3" dot={false} name="CI high" />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: "1.5rem", marginBottom: "1.5rem" }}>
+        <div style={cardStyle}>
+          <h2 style={sectionTitle}>Benchmarking panel · councils</h2>
+          <div style={{ maxHeight: 220, overflow: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <thead>
+                <tr style={{ background: "#e2e8f0", textAlign: "left" }}>
+                  <th style={{ padding: "0.4rem" }}>Council</th>
+                  <th style={{ padding: "0.4rem" }}>Reports</th>
+                  <th style={{ padding: "0.4rem" }}>km²</th>
+                  <th style={{ padding: "0.4rem" }}>Per km²</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(advanced?.benchmarking_panel?.councils ?? []).map((r) => (
+                  <tr key={r.name} style={{ borderTop: "1px solid #e5e7eb" }}>
+                    <td style={{ padding: "0.4rem", fontWeight: 600 }}>{r.name}</td>
+                    <td style={{ padding: "0.4rem" }}>{r.reports}</td>
+                    <td style={{ padding: "0.4rem" }}>{r.area_km2}</td>
+                    <td style={{ padding: "0.4rem" }}>{r.reports_per_km2}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div style={cardStyle}>
+          <h2 style={sectionTitle}>Benchmarking panel · counties</h2>
+          <div style={{ maxHeight: 220, overflow: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <thead>
+                <tr style={{ background: "#e2e8f0", textAlign: "left" }}>
+                  <th style={{ padding: "0.4rem" }}>County</th>
+                  <th style={{ padding: "0.4rem" }}>Reports</th>
+                  <th style={{ padding: "0.4rem" }}>km²</th>
+                  <th style={{ padding: "0.4rem" }}>Per km²</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(advanced?.benchmarking_panel?.counties ?? []).map((r) => (
+                  <tr key={r.name} style={{ borderTop: "1px solid #e5e7eb" }}>
+                    <td style={{ padding: "0.4rem", fontWeight: 600 }}>{r.name}</td>
+                    <td style={{ padding: "0.4rem" }}>{r.reports}</td>
+                    <td style={{ padding: "0.4rem" }}>{r.area_km2}</td>
+                    <td style={{ padding: "0.4rem" }}>{r.reports_per_km2}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <Link to="/" style={{ textDecoration: "none", color: "#475569", fontWeight: 600 }}>
         ← Back to map
       </Link>
