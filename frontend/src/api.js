@@ -84,7 +84,7 @@ export const fetchGeographicReports = (type, name) =>
     params: { type, name },
   });
 
-// Boundaries (council/admin only). Use minimal=1 for fast list (id, name, report_count) without geometry.
+// Boundaries (council/admin only). minimal=1: id, name, report_count (0 unless server adds with_report_counts=1).
 export const fetchCounties = (params = {}) => api.get("counties/", { params });
 export const fetchConstituencies = (params = {}) => api.get("constituencies/", { params });
 export const fetchCouncils = (params = {}) => api.get("councils/", { params });

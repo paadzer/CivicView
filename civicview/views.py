@@ -21,6 +21,11 @@ from .serializers import (
 from .tasks import generate_hotspots
 
 
+def _wants_spatial_report_counts(request):
+    """ST_DWithin counts are costly at scale; opt in with ?with_report_counts=1 (not used by the SPA)."""
+    return request.query_params.get("with_report_counts", "").lower() in ("1", "true", "yes")
+
+
 # ReportViewSet: Provides full CRUD operations for civic reports
 # Handles GET (list/detail), POST (create), PUT/PATCH (update), DELETE operations
 class ReportViewSet(viewsets.ModelViewSet):
@@ -185,12 +190,17 @@ class CountyViewSet(viewsets.ReadOnlyModelViewSet):
 
     def list(self, request, *args, **kwargs):
         if request.query_params.get("minimal"):
-            return self._list_minimal_counties()
+            if _wants_spatial_report_counts(request):
+                return self._list_minimal_counties_spatial_counts()
+            return self._list_minimal_counties_fast()
         return super().list(request, *args, **kwargs)
 
-    def _list_minimal_counties(self):
-        # One spatial join per request (GROUP BY). Correlated subqueries per row time out
-        # on large constituency/county sets and appear as CORS errors in the browser.
+    def _list_minimal_counties_fast(self):
+        # Id/name only: spatial report counts time out on large boundary sets (browser shows "CORS error").
+        rows = County.objects.order_by("name").values("id", "name")
+        return Response([{**r, "report_count": 0} for r in rows])
+
+    def _list_minimal_counties_spatial_counts(self):
         from django.db import connection
         with connection.cursor() as cursor:
             cursor.execute("""
@@ -217,10 +227,16 @@ class DailConstituencyViewSet(viewsets.ReadOnlyModelViewSet):
 
     def list(self, request, *args, **kwargs):
         if request.query_params.get("minimal"):
-            return self._list_minimal_constituencies()
+            if _wants_spatial_report_counts(request):
+                return self._list_minimal_constituencies_spatial_counts()
+            return self._list_minimal_constituencies_fast()
         return super().list(request, *args, **kwargs)
 
-    def _list_minimal_constituencies(self):
+    def _list_minimal_constituencies_fast(self):
+        rows = DailConstituency.objects.order_by("name").values("id", "name")
+        return Response([{**r, "report_count": 0} for r in rows])
+
+    def _list_minimal_constituencies_spatial_counts(self):
         from django.db import connection
         with connection.cursor() as cursor:
             cursor.execute("""
@@ -247,10 +263,16 @@ class LocalCouncilViewSet(viewsets.ReadOnlyModelViewSet):
 
     def list(self, request, *args, **kwargs):
         if request.query_params.get("minimal"):
-            return self._list_minimal_councils()
+            if _wants_spatial_report_counts(request):
+                return self._list_minimal_councils_spatial_counts()
+            return self._list_minimal_councils_fast()
         return super().list(request, *args, **kwargs)
 
-    def _list_minimal_councils(self):
+    def _list_minimal_councils_fast(self):
+        rows = LocalCouncil.objects.order_by("name").values("id", "name")
+        return Response([{**r, "report_count": 0} for r in rows])
+
+    def _list_minimal_councils_spatial_counts(self):
         from django.db import connection
         with connection.cursor() as cursor:
             cursor.execute("""
