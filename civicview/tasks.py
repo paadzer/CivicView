@@ -176,6 +176,10 @@ def _merge_nearby_polygons(cluster_polygons, threshold_meters):
     # Preserve deterministic ids by using first-seen cluster_id per merged geometry.
     projected = []
     for cluster_id, polygon in cluster_polygons:
+        # GEOS polygons from Shapely round-trips must carry WGS84; otherwise transform() raises.
+        if polygon.srid in (None, 0):
+            polygon = polygon.clone()
+            polygon.srid = 4326
         poly_3857 = polygon.transform(3857, clone=True)
         projected.append((cluster_id, shapely_wkt.loads(poly_3857.wkt)))
 
@@ -261,7 +265,7 @@ def _create_buffered_polygon(points_wgs84):
                 point_3857 = Point(x_m, y_m, srid=3857)
                 point_wgs84 = point_3857.transform(4326, clone=True)
                 coords_wgs84.append((point_wgs84.x, point_wgs84.y))
-            polygons.append(Polygon(coords_wgs84))
+            polygons.append(Polygon(coords_wgs84, srid=4326))
         return MultiPolygon(polygons)
     
     elif union.geom_type == "Polygon":
@@ -272,7 +276,7 @@ def _create_buffered_polygon(points_wgs84):
             point_3857 = Point(x_m, y_m, srid=3857)
             point_wgs84 = point_3857.transform(4326, clone=True)
             coords_wgs84.append((point_wgs84.x, point_wgs84.y))
-        return Polygon(coords_wgs84)
+        return Polygon(coords_wgs84, srid=4326)
     
     # Fallback: return None if geometry type is unexpected
     return None
